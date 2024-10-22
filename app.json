@@ -1,27 +1,37 @@
 {
   "expo": {
-    "name": "TbookeAppExpo",
-    "slug": "TbookeAppExpo",
+    "name": "Tbooke",
+    "slug": "tbooke",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/tbooke.png",
     "splash": {
-      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#008080"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/tbooke.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.olie.tbooke"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/tbooke.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e829859e-c3ea-40af-9436-e48a01bb9fa8"
+      }
     }
   }
 }
