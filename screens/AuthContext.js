@@ -1,16 +1,16 @@
 // AuthContext.js
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from './api'; // Import your API instance
+import api from './api';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [authToken, setAuthToken] = useState(null);
-    const [profileData, setProfileData] = useState(null); // Store the entire profile data
+    const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [notificationCount, setNotificationCount] = useState(0); // Track notification count
+    const [notificationCount, setNotificationCount] = useState(0);
 
     // Function to load token and fetch profile data
     const loadToken = async () => {

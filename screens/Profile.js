@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, Button, ScrollView, TouchableOpacity, Modal, StyleSheet, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, Button, ScrollView, TouchableOpacity, Modal, StyleSheet, Linking, TextInput, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Avatar, Badge } from 'react-native-elements';
+import { Avatar, Badge, Icon } from 'react-native-elements';
 import Navbar from './Navbar'; // Adjust the path based on your file structure
 import api from './api'; // Import your API setup with Axios
 import { AuthContext } from './AuthContext'; // Import AuthContext for token management
@@ -11,29 +11,47 @@ const Profile = () => {
     const { profileData, loading, error, notificationCount } = useContext(AuthContext);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showRepostSuccessModal, setShowRepostSuccessModal] = useState(false);
+    const [commentInputVisible, setCommentInputVisible] = useState(null);
+    const [commentText, setCommentText] = useState('');
+    const [showPostOptions, setShowPostOptions] = useState(null);
 
-    // Handle liking a post
     const handleLike = async (postId) => {
         try {
-            await api.post(`/posts/${postId}/like`); // Authorization header is added by interceptor
+            await api.post(`/posts/${postId}/like`);
             setShowSuccessModal(true);
         } catch (err) {
             console.error("Error liking post:", err);
         }
     };
 
-    // Handle commenting on a post
-    const handleComment = (postId) => {
-        navigation.navigate('CommentScreen', { postId });
+    const handleCommentSubmit = async (postId) => {
+        if (commentText.trim()) {
+            try {
+                await api.post(`/posts/${postId}/comments`, { text: commentText });
+                setCommentText('');
+                setCommentInputVisible(null);
+            } catch (err) {
+                console.error("Error submitting comment:", err);
+            }
+        }
     };
 
-    // Handle reposting a post
     const handleRepost = async (postId) => {
         try {
-            await api.post(`/posts/${postId}/repost`); // Authorization header is added by interceptor
+            await api.post(`/posts/${postId}/repost`);
             setShowRepostSuccessModal(true);
         } catch (err) {
             console.error("Error reposting:", err);
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        try {
+            await api.delete(`/posts/${postId}`);
+            alert('Post deleted successfully!');
+            setShowPostOptions(null);
+        } catch (err) {
+            console.error("Error deleting post:", err);
         }
     };
 
@@ -55,15 +73,13 @@ const Profile = () => {
         <View style={styles.container}>
             <Navbar navigation={navigation} notificationCount={notificationCount} />
             <ScrollView style={styles.scrollContainer}>
-                {/* Profile Details */}
                 <View style={styles.profileContainer}>
-                            <Avatar
-                rounded
-                size="xlarge"
-                source={{ uri: user?.profile_picture ? `https://tbooke.net/storage/${user.profile_picture}` : require('./../assets/images/avatar.png') }}
-                containerStyle={styles.avatar}
-            />
-
+                    <Avatar
+                        rounded
+                        size="xlarge"
+                        source={{ uri: user?.profile_picture ? `https://tbooke.net/storage/${user.profile_picture}` : require('./../assets/images/avatar.png') }}
+                        containerStyle={styles.avatar}
+                    />
                     <Text style={styles.profileName}>
                         {user.profile_type === 'institution' && profileDetails?.institution_name
                             ? profileDetails.institution_name
@@ -72,54 +88,12 @@ const Profile = () => {
                     <Text style={styles.profileType}>{user.profile_type}</Text>
                     <Text style={styles.followersCount}>Connections: {followersCount}</Text>
                 </View>
-                
+
                 <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile', { profileData })}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
-                
-                {/* About Me */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>About Me</Text>
-                    <Text>{profileDetails?.about || "You haven't added about you."}</Text>
-                </View>
 
-                {/* My Subjects */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>My Subjects</Text>
-                    <View style={styles.subjectLinks}>
-                        {profileDetails?.user_subjects?.split(',').map((subject, index) => (
-                            <Badge key={index} value={subject.trim()} badgeStyle={styles.badge} textStyle={styles.badgeText} />
-                        )) || <Text>You haven't added any subjects.</Text>}
-                    </View>
-                </View>
-
-                {/* Favorite Topics */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Favorite Topics</Text>
-                    <View style={styles.favoriteTopicLinks}>
-                        {profileDetails?.favorite_topics?.split(',').map((topic, index) => (
-                            <Badge key={index} value={topic.trim()} badgeStyle={styles.badge} textStyle={styles.badgeText} />
-                        )) || <Text>You haven't added any favorite topics.</Text>}
-                    </View>
-                </View>
-
-                {/* Find me on */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Find me on</Text>
-                    <View style={styles.socialLinks}>
-                        {profileDetails?.socials ? (
-                            Object.entries(profileDetails.socials).map(([platform, link], index) => (
-                                <TouchableOpacity key={index} onPress={() => Linking.openURL(link)}>
-                                    <Text style={styles.socialLink}>{platform.charAt(0).toUpperCase() + platform.slice(1)}</Text>
-                                </TouchableOpacity>
-                            ))
-                        ) : (
-                            <Text>No social media profiles found.</Text>
-                        )}
-                    </View>
-                </View>
-
-                {/* Activities */}
+                {/* Activities Section */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Activities</Text>
                     {posts.length === 0 ? (
@@ -138,55 +112,58 @@ const Profile = () => {
                                         {post.user?.first_name} {post.user?.surname}
                                     </Text>
                                     <Text style={styles.postText}>{post.content}</Text>
-                                    <View style={styles.mediaContainer}>
-                                        {/* Render media based on type */}
-                                    </View>
-                                    {/* Like, Comment, and Repost Buttons */}
+
                                     <View style={styles.actions}>
                                         <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id)}>
+                                            <Icon name="thumb-up" type="material" color="#333" size={20} />
                                             <Text style={styles.actionText}>Like</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => handleComment(post.id)}>
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={() => setCommentInputVisible(commentInputVisible === index ? null : index)}
+                                        >
+                                            <Icon name="comment" type="material" color="#333" size={20} />
                                             <Text style={styles.actionText}>Comment</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={styles.actionButton} onPress={() => handleRepost(post.id)}>
+                                            <Icon name="share" type="material" color="#333" size={20} />
                                             <Text style={styles.actionText}>Repost</Text>
                                         </TouchableOpacity>
                                     </View>
+
+                                    {commentInputVisible === index && (
+                                        <View style={styles.commentInputContainer}>
+                                            <TextInput
+                                                style={styles.commentInput}
+                                                placeholder="Write a comment..."
+                                                value={commentText}
+                                                onChangeText={setCommentText}
+                                            />
+                                            <TouchableOpacity style={styles.submitButton} onPress={() => handleCommentSubmit(post.id)}>
+                                                <Text style={styles.submitButtonText}>Submit</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+
+                                    {/* Post Options */}
+                                    <TouchableOpacity onPress={() => setShowPostOptions(showPostOptions === index ? null : index)} style={styles.optionsButton}>
+                                        <Icon name="more-horiz" type="material" color="#333" />
+                                    </TouchableOpacity>
+                                    {showPostOptions === index && (
+                                        <View style={styles.optionsMenu}>
+                                            <TouchableOpacity onPress={() => handleDeletePost(post.id)}>
+                                                <Text style={styles.optionsText}>Delete Post</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: post.user.id })}>
+                                                <Text style={styles.optionsText}>View Profile</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                 </View>
                             </View>
                         ))
                     )}
                 </View>
-
-                {/* Success Modals */}
-                <Modal
-                    transparent={true}
-                    visible={showSuccessModal}
-                    onRequestClose={() => setShowSuccessModal(false)}
-                    animationType="slide"
-                >
-                    <View style={styles.modalBackground}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Post created successfully</Text>
-                            <Button title="Close" onPress={() => setShowSuccessModal(false)} />
-                        </View>
-                    </View>
-                </Modal>
-
-                <Modal
-                    transparent={true}
-                    visible={showRepostSuccessModal}
-                    onRequestClose={() => setShowRepostSuccessModal(false)}
-                    animationType="slide"
-                >
-                    <View style={styles.modalBackground}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Repost successful</Text>
-                            <Button title="Close" onPress={() => setShowRepostSuccessModal(false)} />
-                        </View>
-                    </View>
-                </Modal>
             </ScrollView>
         </View>
     );
@@ -255,35 +232,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 8,
     },
-    subjectLinks: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 8,
-    },
-    favoriteTopicLinks: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 8,
-    },
-    badge: {
-        backgroundColor: '#e7f4f5',
-        borderColor: '#008080',
-        borderWidth: 1,
-        borderRadius: 5,
-        margin: 4,
-    },
-    badgeText: {
-        color: '#008080',
-    },
-    socialLinks: {
-        flexDirection: 'column',
-        marginTop: 8,
-    },
-    socialLink: {
-        color: '#008080',
-        textDecorationLine: 'underline',
-        marginBottom: 4,
-    },
     postBox: {
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -307,57 +255,64 @@ const styles = StyleSheet.create({
         marginVertical: 4,
         color: '#555',
     },
-    mediaContainer: {
-        // Add styles for media content if needed
-    },
     actions: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 8,
+        justifyContent: 'space-around',
+        marginVertical: 8,
     },
     actionButton: {
-        padding: 8,
-        backgroundColor: '#008080',
-        borderRadius: 5,
-        flex: 1,
         alignItems: 'center',
-        marginHorizontal: 4,
     },
     actionText: {
+        marginTop: 4,
+        fontSize: 12,
+        color: '#555',
+    },
+    commentInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    commentInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        paddingHorizontal: 10,
+        marginRight: 10,
+    },
+    submitButton: {
+        backgroundColor: '#008080',
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        borderRadius: 5,
+    },
+    submitButtonText: {
         color: '#fff',
         fontWeight: 'bold',
     },
-    noActivitiesText: {
-        textAlign: 'center',
-        color: '#6c757d',
+    optionsButton: {
+        alignSelf: 'flex-end',
+        marginTop: 5,
+        top: -100,
     },
-    modalBackground: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        width: '80%',
+    optionsMenu: {
+        position: 'absolute',
+        right: 0,
+        top: 30,
         backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 10,
-        alignItems: 'center',
+        borderRadius: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        padding: 10,
+        elevation: 5,
     },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    loadingIndicator: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    errorText: {
-        color: 'red',
-        textAlign: 'center',
-        marginTop: 20,
+    optionsText: {
+        paddingVertical: 5,
+        fontSize: 16,
+        color: '#333',
     },
 });
 

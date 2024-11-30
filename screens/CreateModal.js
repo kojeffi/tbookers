@@ -8,11 +8,11 @@ const CreateModal = ({ navigation }) => {
 
   const handleCreatePost = async () => {
     try {
-      await axios.post('http://192.168.12.117:8000/api/groups/create-post', {
+      await axios.post('https://tbooke.net/api/groups/create-post', {
         content,
         media,
       });
-      navigation.goBack(); // Navigate back after creating a post
+      navigation.goBack(); 
     } catch (error) {
       console.error(error);
     }

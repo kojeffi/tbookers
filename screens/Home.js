@@ -14,14 +14,14 @@ const Home = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.content}>
 
         {/* Buttons Row */}
-        <View style={styles.buttonRow}>
+        {/* <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Post')}>
             <Text style={styles.loginButtonText}>Posts</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.loginButtonT} onPress={() => navigation.navigate('Dashboard')}>
             <Text style={styles.loginButtonText}>Dashboard</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
         {/* Tbooke Learning */}
         <TouchableOpacity 
           style={[styles.card, { backgroundColor: '#E75480' }]} // Different background color
@@ -30,7 +30,9 @@ const Home = ({ navigation }) => {
           <View style={styles.cardHeader}>
             <Icon name="book" size={30} color="#fff" style={styles.icon} />
             <Text style={styles.cardTitle}>Tbooke Learning</Text>
-            <Text style={styles.cardText}>Explore Tbooke Learning, your hub for diverse educational content, interactive lessons, and meaningful connections with learners and educators.</Text>
+            <Text style={styles.cardText}>
+            Explore Tbooke Learning, your hub for diverse educational content.
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -42,7 +44,8 @@ const Home = ({ navigation }) => {
           <View style={styles.cardHeader}>
             <Icon name="archive" size={30} color="#fff" style={styles.icon} />
             <Text style={styles.cardTitle}>Learning Resources</Text>
-            <Text style={styles.cardText}>Discover a variety of educational tools and resources at Tbooke Shop. Enhance your skills and knowledge with resources designed to support your learning journey.
+            <Text style={styles.cardText}>
+            Discover a variety of educational tools and resources at Tbooke Shop.
             </Text>
           </View>
         </TouchableOpacity>
@@ -55,7 +58,9 @@ const Home = ({ navigation }) => {
           <View style={styles.cardHeader}>
             <Icon name="graduation-cap" size={30} color="#fff" style={styles.icon} />
             <Text style={styles.cardTitle}>Schools Corner</Text>
-            <Text style={styles.cardText}>Explore Schools Corner at Tbooke, dedicated pages for educational institutions to create and share content, fostering collaboration and innovation.</Text>
+            <Text style={styles.cardText}>
+              Explore Schools Corner at Tbooke, dedicated pages for educational institutions.
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -67,7 +72,8 @@ const Home = ({ navigation }) => {
           <View style={styles.cardHeader}>
             <Icon name="bullhorn" size={30} color="#fff" style={styles.icon} />
             <Text style={styles.cardTitle}>Tbooke Blueboard</Text>
-            <Text style={styles.cardText}>Discover Tbooke's Blueboard, a moderated platform for education-related communications and announcements, connecting educators and learners.
+            <Text style={styles.cardText}>
+            Discover Tbooke's Blueboard, a moderated platform for education-related communications.
             </Text>
           </View>
         </TouchableOpacity>
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
   },

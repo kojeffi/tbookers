@@ -20,43 +20,31 @@ const LearningResources = ({ navigation }) => {
   const [searchInput, setSearchInput] = useState('');
   const [filteredResources, setFilteredResources] = useState([]);
   const { authToken, logout } = useContext(AuthContext);
-  
-  // Assuming you want to use the seller information directly from the user object
-  const [seller, setSeller] = useState(null);
 
   useEffect(() => {
     const fetchResources = async () => {
       try {
         if (!authToken) {
-          Alert.alert('Authentication Error', 'No authentication token found. Please log in.');
+          Alert.alert('Authentication Error', 'Please log in.');
           navigation.navigate('Login');
           return;
         }
 
         const response = await api.get('/learning-resources');
-        console.log(response.data); // Log the response to check the seller structure
-
-        if (response.data.resources && Array.isArray(response.data.resources)) {
+        if (response.data.resources) {
           setResources(response.data.resources);
           setFilteredResources(response.data.resources);
-          setSeller(response.data.user); // Store the seller's information here
         } else {
-          Alert.alert('Error', 'Failed to load resources.');
           setResources([]);
           setFilteredResources([]);
         }
       } catch (error) {
-        console.error('Fetch Resources Error:', error);
-        if (error.response) {
-          if (error.response.status === 401) {
-            Alert.alert('Unauthorized', 'Please log in again.');
-            logout();
-            navigation.navigate('Login');
-          } else {
-            Alert.alert('Error', 'An error occurred while fetching resources.');
-          }
+        if (error.response && error.response.status === 401) {
+          Alert.alert('Unauthorized', 'Please log in again.');
+          logout();
+          navigation.navigate('Login');
         } else {
-          Alert.alert('Error', 'Network error occurred.');
+          Alert.alert('Error', 'Failed to fetch resources.');
         }
       }
     };
@@ -71,64 +59,68 @@ const LearningResources = ({ navigation }) => {
     setFilteredResources(filtered);
   }, [searchInput, resources]);
 
-  const handleCall = (phoneNumber) => {
-    if (!phoneNumber) {
-      Alert.alert('Error', 'Phone number not available.');
+  const handleContact = (type, value) => {
+    if (!value) {
+      Alert.alert('Error', `${type} not available.`);
       return;
     }
-    let phoneUrl = `tel:${phoneNumber}`;
-    Linking.openURL(phoneUrl).catch((err) => console.error('Error initiating phone call:', err));
-  };
-
-  const handleWhatsApp = (whatsappNumber) => {
-    if (!whatsappNumber) {
-      Alert.alert('Error', 'WhatsApp number not available.');
-      return;
-    }
-    let whatsappUrl = `whatsapp://send?phone=${whatsappNumber}`;
-    Linking.openURL(whatsappUrl).catch((err) => console.error('Error initiating WhatsApp chat:', err));
-  };
-
-  const handleEmail = (email) => {
-    if (!email) {
-      Alert.alert('Error', 'Email address not available.');
-      return;
-    }
-    let emailUrl = `mailto:${email}`;
-    Linking.openURL(emailUrl).catch((err) => console.error('Error initiating email:', err));
+    const url =
+      type === 'phone'
+        ? `tel:${value}`
+        : type === 'whatsapp'
+        ? `whatsapp://send?phone=${value}`
+        : `mailto:${value}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Error', `Unable to open ${type}.`)
+    );
   };
 
   return (
     <View style={styles.container}>
       <Navbar navigation={navigation} />
       <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Tbooke Shop</Text>
-        </View>
+        {/* <View style={styles.header}>
+          <Text style={styles.title}>Learning Resources</Text>
+        </View> */}
+
+        {/* Buttons */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Form')} style={styles.sellButton}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Form')}
+            style={styles.sellButton}
+          >
             <Text style={styles.sellButtonText}>Sell on Tbooke</Text>
           </TouchableOpacity>
           {authToken && (
-            <TouchableOpacity onPress={() => navigation.navigate('MyResources')} style={styles.myResourcesButton}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MyResources')}
+              style={styles.myResourcesButton}
+            >
               <Text style={styles.myResourcesButtonText}>My Resources</Text>
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Search Items"
+            placeholder="Search resources..."
             value={searchInput}
             onChangeText={setSearchInput}
           />
         </View>
 
+        {/* Resources */}
         <View style={styles.resourcesContainer}>
-          {Array.isArray(filteredResources) && filteredResources.length > 0 ? (
+          {filteredResources.length > 0 ? (
             filteredResources.map((resource) => (
               <View key={resource.id} style={styles.card}>
-                <TouchableOpacity onPress={() => navigation.navigate('ResourceDetail', { slug: resource.slug })}>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('ResourceDetail', { slug: resource.slug })
+                  }
+                >
                   <Image
                     source={{
                       uri: resource.item_thumbnail
@@ -139,32 +131,43 @@ const LearningResources = ({ navigation }) => {
                     resizeMode="cover"
                   />
                 </TouchableOpacity>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.sellerName}>
-                    Seller: {seller && seller.first_name ? 
-                    `${seller.first_name} ${seller.surname || ''}`.trim() : 'No Seller'}
-                  </Text>
+                <View style={styles.cardContent}>
                   <Text style={styles.resourceTitle}>{resource.item_name}</Text>
-                  <Text style={styles.resourcePrice}>Price: KES {Number(resource.item_price).toLocaleString()}</Text>
-                </View>
-                <View style={styles.cardBody}>
-                  <Text>
-                    {resource.description ? `${resource.description.slice(0, 50)}...` : 'No description available.'}
+                  <Text style={styles.resourcePrice}>
+                    Price: KES {Number(resource.item_price).toLocaleString()}
                   </Text>
-                  <View style={styles.contactButtonContainer}>
-                    <TouchableOpacity style={styles.contactButton}>
-                      <Text style={styles.contactButtonText}>Contact Seller</Text>
+                  <Text style={styles.sellerName}>
+                    Seller: {resource.user
+                      ? resource.user.institutionDetails
+                        ? resource.user.institutionDetails.institution_name
+                        : `${resource.user.first_name} ${resource.user.surname}`
+                      : 'Unknown'}
+                  </Text>
+                  <Text style={styles.description}>
+                    {resource.description
+                      ? `${resource.description.slice(0, 50)}...`
+                      : 'No description available.'}
+                  </Text>
+                  <View style={styles.contactIcons}>
+                    <TouchableOpacity
+                      onPress={() => handleContact('phone', resource.contact_phone)}
+                      style={[styles.iconButton, { backgroundColor: '#28a745' }]}
+                    >
+                      <Ionicons name="call" size={20} color="white" />
                     </TouchableOpacity>
-                  </View>
-                  <View style={styles.sellerContact}>
-                    <TouchableOpacity onPress={() => handleCall(resource.contact_phone)} style={styles.iconButton}>
-                      <Ionicons name="call" size={24} color="white" />
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleContact('whatsapp', resource.whatsapp_number)
+                      }
+                      style={[styles.iconButton, { backgroundColor: '#25D366' }]}
+                    >
+                      <Ionicons name="logo-whatsapp" size={20} color="white" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleWhatsApp(resource.whatsapp_number)} style={styles.iconButton}>
-                      <Ionicons name="logo-whatsapp" size={24} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleEmail(resource.contact_email)} style={styles.iconButton}>
-                      <Ionicons name="mail" size={24} color="white" />
+                    <TouchableOpacity
+                      onPress={() => handleContact('email', resource.contact_email)}
+                      style={[styles.iconButton, { backgroundColor: '#007BFF' }]}
+                    >
+                      <Ionicons name="mail" size={20} color="white" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -185,12 +188,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    padding: 16,
     alignItems: 'center',
+    marginVertical: 15,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#333',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -199,92 +203,97 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   sellButton: {
-    backgroundColor: '#007bff',
-    padding: 12,
-    borderRadius: 5,
+    backgroundColor: '#007BFF',
+    paddingVertical: 8,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
   },
   sellButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 14,
   },
   myResourcesButton: {
-    backgroundColor: '#17a2b8',
-    padding: 12,
-    borderRadius: 5,
+    backgroundColor: '#6C757D',
+    paddingVertical: 8,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
   },
   myResourcesButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 14,
   },
   searchContainer: {
     paddingHorizontal: 16,
-    marginVertical: 10,
+    marginBottom: 10,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ced4da',
-    borderRadius: 5,
+    borderRadius: 8,
     padding: 12,
+    backgroundColor: '#fff',
   },
   resourcesContainer: {
-    padding: 16,
+    // Removed padding for full-width cards
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 5,
-    marginVertical: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
     elevation: 3,
-    padding: 16,
+    width: '100%', // Full width
+    overflow: 'hidden',
   },
   image: {
-    width: '100%',
-    height: 150,
-    borderRadius: 5,
+    width: '100%', // Full width
+    height: 200, // Larger height for better display
   },
-  cardHeader: {
-    marginVertical: 8,
-  },
-  sellerName: {
-    fontWeight: 'bold',
+  cardContent: {
+    padding: 12,
   },
   resourceTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
   },
   resourcePrice: {
-    fontSize: 16,
-    color: '#28a745',
-  },
-  cardBody: {
-    marginTop: 8,
-  },
-  contactButtonContainer: {
-    marginVertical: 8,
-  },
-  contactButton: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  contactButtonText: {
-    color: 'white',
+    fontSize: 14,
     fontWeight: 'bold',
+    color: '#28a745',
+    marginBottom: 5,
   },
-  sellerContact: {
+  sellerName: {
+    fontSize: 16,
+    // color: '#6c757d',
+    color: '#333',
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 10,
+  },
+  contactIcons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
   },
   iconButton: {
-    backgroundColor: '#28a745',
+    borderRadius: 50,
     padding: 10,
-    borderRadius: 5,
-    marginRight: 10,
   },
   noResourcesText: {
     textAlign: 'center',
-    marginVertical: 20,
+    color: '#6c757d',
+    marginTop: 20,
   },
 });
 

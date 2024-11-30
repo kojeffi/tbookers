@@ -1,29 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-// import * DocumentPicker from 'react-native-document-picker';
-import axios from 'axios';
-import Navbar from './Navbar';  // Import the Navbar component
+import * as ImagePicker from 'expo-image-picker';
+import { AuthContext } from './AuthContext';
+import api from './api';
+import Navbar from './Navbar';
 
 const AddSchool = () => {
+  const { authToken } = useContext(AuthContext);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
 
-  // URL of your local Laravel API endpoint
-  const apiUrl = 'http://localhost:8000/api/schools'; // Adjust port if necessary
-
   const handleImagePick = async () => {
-    try {
-      const res = await DocumentPicker.pick({
-        type: [DocumentPicker.types.images],
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.status !== 'granted') {
+      Alert.alert("Permission Denied", "You need to allow access to your media library to select images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const pickedImage = result.assets[0];
+      setImage({
+        uri: pickedImage.uri,
+        type: 'image/jpeg',
+        name: pickedImage.uri.split('/').pop(),
       });
-      setImage(res[0]); // Assuming single file upload
-    } catch (err) {
-      if (DocumentPicker.isCancel(err)) {
-        Alert.alert('Cancelled', 'Image selection was cancelled.');
-      } else {
-        Alert.alert('Error', 'An error occurred while selecting the image.');
-      }
+    } else {
+      Alert.alert('Cancelled', 'Image selection was cancelled.');
     }
   };
 
@@ -43,7 +52,7 @@ const AddSchool = () => {
     });
 
     try {
-      const response = await axios.post(apiUrl, formData, {
+      const response = await api.post('/schools', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -64,45 +73,44 @@ const AddSchool = () => {
 
   return (
     <View style={styles.container}>
-        {/* Navbar */}
       <Navbar />
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Your School</Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Add Your School</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="School name"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Describe your school..."
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={4}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="School name"
+          value={name}
+          onChangeText={setName}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Describe your school..."
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleImagePick}>
-        <Text style={styles.buttonText}>Pick Image</Text>
-      </TouchableOpacity>
-      {image && <Text style={styles.imageText}>Selected: {image.name}</Text>}
+        <TouchableOpacity style={styles.button} onPress={handleImagePick}>
+          <Text style={styles.buttonText}>Pick Image</Text>
+        </TouchableOpacity>
+        {image && <Text style={styles.imageText}>Selected: {image.name}</Text>}
 
-      <Button title="Submit" onPress={handleSubmit} />
+        <Button title="Submit" onPress={handleSubmit} />
       </ScrollView>
-      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    content: {
-        padding: 20,
-      },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    padding: 20,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',

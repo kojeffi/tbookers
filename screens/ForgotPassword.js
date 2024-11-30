@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   headerText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     // fontFamily: 'Nunito_700Bold', // Use bold variant
@@ -142,20 +142,20 @@ const styles = StyleSheet.create({
     // Additional styling if needed
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     marginBottom: 5,
     color: '#333',
     // fontFamily: 'Nunito_600SemiBold',
   },
   input: {
-    height: 50,
+    height: 30,
     borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 5,
     paddingLeft: 15,
     marginBottom: 15,
     backgroundColor: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     // fontFamily: 'Nunito_400Regular',
   },
   inputError: {
@@ -168,13 +168,14 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#800000',
-    paddingVertical: 15,
+    paddingVertical: 8,
     borderRadius: 5,
     alignItems: 'center',
+    marginHorizontal: 50,
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 14,
     // fontFamily: 'Nunito_700Bold',
   },
 });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import Navbar from './Navbar';  // Import your Navbar component
+import Navbar from './Navbar';
 
 const CreateBlueboardPost = () => {
   const [title, setTitle] = useState('');

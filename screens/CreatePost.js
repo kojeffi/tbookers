@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   TouchableOpacity,
   Image,
@@ -11,45 +10,57 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import api from './api';
+import * as DocumentPicker from 'expo-document-picker';
+import { Video } from 'expo-av';
 import { AuthContext } from './AuthContext';
 import Navbar from './Navbar';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import api from './api';
 
 const CreatePost = ({ navigation }) => {
-  const { authToken } = useContext(AuthContext);
+  const { authToken } = useContext(AuthContext); // Token for authenticated requests
   const [content, setContent] = useState('');
-  const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const handleImagePick = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+  // Function to pick multiple files (images, videos, documents, etc.)
+  const handleFilePick = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Allow all file types
+      });
 
-    if (!result.canceled && result.assets.length > 0) {
-      const selectedImage = result.assets[0];
-      setSelectedImages((prevImages) => [...prevImages, selectedImage]);
+      if (result.type !== 'cancel') {
+        const file = {
+          uri: result.uri,
+          name: result.name,
+          mimeType: result.mimeType || 'application/octet-stream',
+        };
+
+        // Ensure the file is valid before adding
+        setSelectedFiles((prevFiles) => [...prevFiles, file]);
+      }
+    } catch (error) {
+      console.error('Error picking file:', error);
+      Alert.alert('Error', 'Failed to pick file.');
     }
   };
 
+  // Function to submit post with media files
   const handleSubmit = async () => {
-    if (!content) {
-      Alert.alert('Error', 'Post content cannot be empty');
+    if (!content.trim()) {
+      Alert.alert('Error', 'Post content cannot be empty.');
       return;
     }
 
     const formData = new FormData();
-    formData.append('content', content);
-    selectedImages.forEach((image, index) => {
+    formData.append('content', content); // Add post content
+
+    selectedFiles.forEach((file, index) => {
       formData.append('media_path[]', {
-        uri: image.uri,
-        name: `image${index}.jpg`,
-        type: 'image/jpeg',
+        uri: file.uri,
+        name: file.name || `file_${index}`,
+        type: file.mimeType || 'application/octet-stream',
       });
     });
 
@@ -63,12 +74,14 @@ const CreatePost = ({ navigation }) => {
         },
       });
 
-      navigation.navigate('Post', { postId: response.data.id });
+      // Reset form after successful submission
       setContent('');
-      setSelectedImages([]);
+      setSelectedFiles([]);
+      navigation.navigate('Post', { postId: response.data.id }); // Redirect to the post view
+      Alert.alert('Success', 'Post created successfully!');
     } catch (error) {
-      console.error('Error creating post:', error);
-      Alert.alert('Error', 'Failed to create post');
+      console.error('Error creating post:', error.response || error);
+      Alert.alert('Error', 'Failed to create the post.');
     } finally {
       setLoading(false);
     }
@@ -76,56 +89,80 @@ const CreatePost = ({ navigation }) => {
 
   return (
     <ScrollView>
-    <Navbar navigation={navigation} />
-    <View style={styles.container}>
-      
-      <Text style={styles.title}>Create Post</Text>
-      <ScrollView style={styles.body}>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Enter your post content"
-          value={content}
-          onChangeText={setContent}
-          multiline
-          numberOfLines={4}
-          placeholderTextColor="#aaaaaa"
-        />
-        <TouchableOpacity style={styles.imagePicker} onPress={handleImagePick}>
-          <Text style={styles.imagePickerText}>Choose Images</Text>
-        </TouchableOpacity>
-        {selectedImages.length > 0 && (
-          <View style={styles.selectedImagesContainer}>
-            {selectedImages.map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image.uri }}
-                style={styles.selectedImage}
-              />
-            ))}
-          </View>
+      <Navbar navigation={navigation} />
+      <View style={styles.container}>
+        <Text style={styles.title}>Create Post</Text>
+        <ScrollView style={styles.body}>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter your post content"
+            value={content}
+            onChangeText={setContent}
+            multiline
+            numberOfLines={4}
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity style={styles.filePicker} onPress={handleFilePick}>
+            <Icon name="attach-file" size={20} color="#008080" />
+            <Text style={styles.filePickerText}>Choose Files</Text>
+          </TouchableOpacity>
+          {selectedFiles.length > 0 && (
+            <View style={styles.selectedFilesContainer}>
+              {selectedFiles.map((file, index) => {
+                if (file.mimeType?.startsWith('image/')) {
+                  // Render Image
+                  return (
+                    <Image
+                      key={index}
+                      source={{ uri: file.uri }}
+                      style={styles.selectedImage}
+                    />
+                  );
+                } else if (file.mimeType?.startsWith('video/')) {
+                  // Render Video
+                  return (
+                    <Video
+                      key={index}
+                      source={{ uri: file.uri }}
+                      style={styles.selectedVideo}
+                      useNativeControls
+                      resizeMode="contain"
+                    />
+                  );
+                } else {
+                  // Render Other Files
+                  return (
+                    <View key={index} style={styles.otherFileContainer}>
+                      <Icon name="insert-drive-file" size={24} color="#008080" />
+                      <Text style={styles.fileName}>{file.name}</Text>
+                    </View>
+                  );
+                }
+              })}
+            </View>
+          )}
+        </ScrollView>
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="cancel" size={18} color="#fff" />
+            <Text style={styles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.submitButton]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Icon name="send" size={18} color="#fff" />
+            <Text style={styles.buttonText}>Post</Text>
+          </TouchableOpacity>
+        </View>
+        {loading && (
+          <ActivityIndicator size="large" color="#007bff" style={styles.loadingIndicator} />
         )}
-      </ScrollView>
-      <View style={[styles.footer, selectedImages.length > 0 && styles.footerWithImages]}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="cancel" size={12} color="#fff" />
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.submitButton]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Icon name="send" size={12} color="#fff" />
-          <Text style={styles.buttonText}>Post</Text>
-        </TouchableOpacity>
       </View>
-      {loading && (
-        <ActivityIndicator size="large" color="#007bff" style={styles.loadingIndicator} />
-      )}
-    </View>
     </ScrollView>
   );
 };
@@ -133,12 +170,11 @@ const CreatePost = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ddd',
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    backgroundColor: '#f5f5f5',
+    padding: 20,
   },
   title: {
-    fontSize: 12,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 15,
@@ -154,65 +190,81 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    fontSize: 12,
+    fontSize: 14,
     color: '#333',
     backgroundColor: '#fff',
+    textAlignVertical: 'top',
   },
-  imagePicker: {
+  filePicker: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#008080',
+    backgroundColor: '#ddd',
     borderRadius: 10,
     marginBottom: 10,
   },
-  imagePickerText: {
-    color: 'white',
+  filePickerText: {
+    color: '#008080',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 16,
     marginLeft: 8,
   },
-  selectedImagesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  selectedFilesContainer: {
     marginTop: 10,
   },
   selectedImage: {
     width: 80,
     height: 80,
     margin: 5,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#007bff',
+    borderColor: '#008080',
+  },
+  selectedVideo: {
+    width: '100%',
+    height: 200,
+    marginVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#008080',
+  },
+  otherFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  fileName: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 5,
-  },
-  footerWithImages: {
     marginTop: 10,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     width: '48%',
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#6c757d',
+    backgroundColor: 'red',
+    marginVertical: 4,
   },
   submitButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#008080',
+    marginVertical: 4,
   },
   buttonText: {
-    color: 'white',
+    color: '#fff',
     fontWeight: 'bold',
     marginLeft: 8,
-    fontSize: 12,
+    fontSize: 16,
   },
   loadingIndicator: {
     marginTop: 20,

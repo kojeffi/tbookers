@@ -2,22 +2,20 @@ import React, { useState, useContext, useEffect, useCallback } from 'react';
 import {View,Text,Button,TouchableOpacity,Image,TextInput,StyleSheet,FlatList,ActivityIndicator,Alert,Share,Dimensions,} from 'react-native';
 import api from './api';
 import { AuthContext } from './AuthContext';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import Icon from 'react-native-vector-icons/Feather';
 import Navbar from './Navbar';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video';
 import Modal from 'react-native-modal';
 import ImageViewing from 'react-native-image-viewing';
-import UserProfile from './UserProfile';
+import styles from './styles';
 
 
 const { width } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.12.117:8000/api';
-
-const MAX_MEDIA_DISPLAY = 6; // Maximum media files to display directly
-
-const Feed = ({ user }) => {
-  const { authToken} = useContext(AuthContext);
+const BASE_URL = 'https://tbooke.net/api/feed';
+const MAX_MEDIA_DISPLAY = 6; // Maximum to display per post
+const Feed = ({ route }) => {
+  const { authToken, user, profileData} = useContext(AuthContext);
   const navigation = useNavigation();
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successModalRepostVisible, setSuccessModalRepostVisible] = useState(false);
@@ -32,6 +30,19 @@ const Feed = ({ user }) => {
   const [isImageViewingVisible, setIsImageViewingVisible] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [currentMediaArray, setCurrentMediaArray] = useState([]);
+  const userId = route?.params?.userId || profileData?.user?.id;
+
+  const [visibleDropdownPostId, setVisibleDropdownPostId] = useState(null); // State to track which post's dropdown is visible
+
+// Function to toggle dropdown for a specific post
+const toggleDropdown = (postId) => {
+  setVisibleDropdownPostId((prevPostId) => (prevPostId === postId ? null : postId));
+};
+
+// Function to close the dropdown
+const handleCloseDropdown = () => {
+  setVisibleDropdownPostId(null);
+};
 
   useEffect(() => {
     fetchPosts();
@@ -42,7 +53,6 @@ const Feed = ({ user }) => {
       fetchPosts();
     }, [])
   );
-  
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -82,11 +92,15 @@ const Feed = ({ user }) => {
 
   const handleCommentSubmit = async (postId) => {
     const content = commentContents[postId]?.trim();
+    
     if (!content) {
       Alert.alert('Validation Error', 'Comment cannot be empty.');
       return;
     }
-
+  
+    console.log(`Submitting comment for Post ID: ${postId}`);
+    console.log(`Comment Content: ${content}`);
+  
     try {
       await api.post(
         '/comment',
@@ -97,13 +111,18 @@ const Feed = ({ user }) => {
           },
         }
       );
-      // Reset comment content for the post
+      
+      // Clear the comment content after successful submission
       setCommentContents((prev) => ({ ...prev, [postId]: '' }));
-      // Refresh posts to show new comment
+      
+      // Fetch the posts and display them in the terminal
       fetchPosts();
+      fetchComments();  // Fetch and log the comments after submitting
+      
       Alert.alert('Success', 'Comment submitted successfully.');
-      // Collapse comments section
+      
       setActiveCommentsPostIds((prev) => prev.filter((id) => id !== postId));
+      
     } catch (error) {
       console.error('Comment Submit Error:', error);
       Alert.alert('Error', 'Failed to submit comment. Please try again later.');
@@ -111,6 +130,13 @@ const Feed = ({ user }) => {
   };
 
   const handleLikePost = async (postId) => {
+    const post = posts.find((post) => post.id === postId);
+    // if (post.isLiked) {
+    //   // If already liked, show an alert and return
+    //   Alert.alert("Notice", "You've already liked this post.");
+    //   return;
+    // }
+  
     try {
       await api.post(
         `/post/${postId}/like`,
@@ -121,14 +147,33 @@ const Feed = ({ user }) => {
           },
         }
       );
-      fetchPosts();
+  
+      // Update local state optimistically
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? { ...post, likes_count: (post.likes_count || 0) + 1, isLiked: true }
+            : post
+        )
+      );
     } catch (error) {
-      console.error('Like Post Error:', error);
-      Alert.alert('Error', 'Failed to like post. Please try again later.');
+      if (error.response?.status === 409) {
+        Alert.alert("Notice", "You've already liked this post.");
+      } else {
+        console.error("Like Post Error:", error);
+        Alert.alert("Error", "Failed to like post. Please try again later.");
+      }
     }
   };
-
+  
   const handleUnlikePost = async (postId) => {
+    const post = posts.find((post) => post.id === postId);
+    if (!post.isLiked) {
+      // If already unliked, show an alert and return
+      Alert.alert("Notice", "You've already unliked this post.");
+      return;
+    }
+  
     try {
       await api.post(
         `/post/${postId}/unlike`,
@@ -139,45 +184,94 @@ const Feed = ({ user }) => {
           },
         }
       );
-      fetchPosts();
+  
+      // Update local state optimistically
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? { ...post, likes_count: (post.likes_count || 0) - 1, isLiked: false }
+            : post
+        )
+      );
     } catch (error) {
-      console.error('Unlike Post Error:', error);
-      Alert.alert('Error', 'Failed to unlike post. Please try again later.');
+      if (error.response?.status === 409) {
+        Alert.alert("Notice", "You've already unliked this post.");
+      } else {
+        console.error("Unlike Post Error:", error);
+        Alert.alert("Error", "Failed to unlike post. Please try again later.");
+      }
     }
   };
 
-  // Handler to follow a user
-  const handleFollow = async (userId) => {
-    if (!userId) {
-      Alert.alert('Error', 'User ID is undefined.');
-      return;
-    }
-    try {
-      await api.post(
-        `/users/${userId}/follow`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      Alert.alert('Success', 'You are now following this user.');
-      setActiveDropdownPostId(null); // Close the dropdown after action
-      fetchPosts();
-    } catch (error) {
-      console.error('Follow User Error:', error);
-      Alert.alert('Error', 'Failed to follow user. Please try again later.');
-    }
-  };
+
+
+
+  const formatDate = (dateString) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const seconds = Math.floor((now - date) / 1000);
+
+    // Check for seconds
+    let interval = Math.floor(seconds);
+    if (interval < 60) return `${interval} second${interval === 1 ? '' : 's'} ago`;
+
+    // Check for minutes
+    interval = Math.floor(seconds / 60);
+    if (interval < 60) return `${interval} minute${interval === 1 ? '' : 's'} ago`;
+
+    // Check for hours
+    interval = Math.floor(seconds / 3600);
+    if (interval < 24) return `${interval} hour${interval === 1 ? '' : 's'} ago`;
+
+    // Check for days
+    interval = Math.floor(seconds / 86400);
+    if (interval < 7) return `${interval} day${interval === 1 ? '' : 's'} ago`;
+
+    // Check for weeks
+    interval = Math.floor(seconds / 604800);
+    if (interval < 52) return `${interval} week${interval === 1 ? '' : 's'} ago`;
+
+    // Check for months
+    interval = Math.floor(seconds / 2592000);
+    if (interval < 12) return `${interval} month${interval === 1 ? '' : 's'} ago`;
+
+    // Check for years
+    interval = Math.floor(seconds / 31536000);
+    return `${interval} year${interval === 1 ? '' : 's'} ago`;
+};
+  
+
+   // Handler to follow a user
+const handleFollow = async (userId) => {
+  if (!userId) {
+    Alert.alert('Error', 'User ID is undefined.');
+    return;
+  }
+  try {
+    await api.post(
+      `/users/${userId}/follow`, // Corrected endpoint for following a user
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+    Alert.alert('Success', 'You are now following this user.');
+    setActiveDropdownPostId(null); // Close the dropdown after action
+    fetchPosts(); // Refresh posts list to reflect follow action
+  } catch (error) {
+    console.error('Follow User Error:', error);
+    Alert.alert('Error', 'Failed to follow user. Please try again later.');
+  }
+};
+
 
   // Handler to repost a post
   const handleRepostPost = async (postId) => {
     // Prevent multiple reposts on the same post simultaneously
     if (repostingPostIds.includes(postId)) return;
-
     setRepostingPostIds((prev) => [...prev, postId]);
-
     try {
       await api.post(
         `/posts/${postId}/repost`,
@@ -198,61 +292,45 @@ const Feed = ({ user }) => {
     }
   };
 
-  // Handler to delete a post
-  const handleDeletePost = async (postId) => {
+
+  const handleDeletePost = (postId) => {
     if (!postId) {
       Alert.alert('Error', 'Post ID is undefined.');
       return;
     }
-    try {
-      await api.post(
-        `/post/${postId}/delete`, // Ensure this endpoint is correct
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      Alert.alert('Success', 'Post deleted successfully.');
-      setActiveDropdownPostId(null); // Close the dropdown after action
-      fetchPosts();
-    } catch (error) {
-      console.error('Delete Post Error:', error);
-      Alert.alert('Error', 'Failed to delete post. Please try again later.');
-    }
+    
+    Alert.alert(
+      'Confirm Deletion',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Yes', 
+          onPress: async () => {
+            try {
+              await api.delete(
+                `/posts/${postId}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+              Alert.alert('Success', 'Post deleted successfully.');
+              setActiveDropdownPostId(null); // Close the dropdown after action
+              fetchPosts(); // Refresh posts list
+            } catch (error) {
+              console.error('Delete Post Error:', error);
+              Alert.alert('Error', 'Failed to delete post. Please try again later.');
+            }
+          } 
+        },
+      ],
+      { cancelable: true }
+    );
   };
+  
 
-  // Handler to share a post
-  const handleSharePost = async (postId) => {
-    const post = posts.find((p) => (p.original_post?.id || p.id) === postId);
-    if (!post) {
-      Alert.alert('Error', 'Post not found.');
-      return;
-    }
-
-    const message = post.original_post?.content || post.content || 'Check out this post!';
-
-    try {
-      const result = await Share.share({
-        message: message,
-        // You can add a URL or other data here if available
-      });
-
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // Shared with activity type of result.activityType
-        } else {
-          // Shared
-        }
-      } else if (result.action === Share.dismissedAction) {
-        // Dismissed
-      }
-    } catch (error) {
-      console.error('Share Post Error:', error);
-      Alert.alert('Error', 'Failed to share post.');
-    }
-  };
 
   const toggleComments = (postId) => {
     if (activeCommentsPostIds.includes(postId)) {
@@ -264,82 +342,59 @@ const Feed = ({ user }) => {
 
   const navigateToProfile = (postUser) => {
     if (!postUser || !postUser.id) {
-      Alert.alert('Error', 'User information is unavailable.');
-      return;
+        Alert.alert('Error', 'User information is unavailable.');
+        return;
     }
 
-    if (postUser.id === user?.id) {
-      // Navigate to Own Profile
-      navigation.navigate('OwnProfile'); // Ensure 'OwnProfile' is defined in your navigator
-    } else {
-      // Navigate to Other User's Profile
-      navigation.navigate('Profile', { username: postUser.username }); // Ensure 'Profile' is defined and accepts 'username' as a parameter
-    }
-  };
+    // Log the full postUser details for debugging purposes
+    console.log('Navigating to profile of user:', postUser);
 
+    // Determine the target screen based on user identity
+    const targetScreen = postUser.id === userId ? 'Profile' : 'OwnProfile';
 
-  const formatDate = (dateString) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const seconds = Math.floor((now - date) / 1000);
-    
-    let interval = Math.floor(seconds / 31536000);
-    if (interval > 1) return `${interval} years ago`;
-    interval = Math.floor(seconds / 2592000);
-    if (interval > 1) return `${interval} months ago`;
-    interval = Math.floor(seconds / 86400);
-    if (interval > 1) return `${interval} days ago`;
-    interval = Math.floor(seconds / 3600);
-    if (interval > 1) return `${interval} hours ago`;
-    interval = Math.floor(seconds / 60);
-    if (interval > 1) return `${interval} minutes ago`;
-    return 'just now';
-  };
+    // Pass the entire postUser object to the target screen
+    navigation.navigate(targetScreen, { postUser });
+};
+
+  const renderComment = ({ item }) => {
+  // Use item.user to access the comment author's data, or fall back to profileData if no user is found
+  const user = item.user || profileData?.user;
   
-
-  const renderComment = ({ item }) => (
+  return (
     <View style={styles.commentItem}>
-      {item.user ? (
-        <TouchableOpacity onPress={() => navigateToProfile(item.user)}>
-          <Image
-            source={
-              item.user.profile_picture
-                ? { uri: `https://tbooke.net/storage/${item.user.profile_picture}` }
-                : require('./../assets/images/avatar.png')
-            }
-            style={styles.profileImage}
-            resizeMode="cover"
-          />
-        </TouchableOpacity>
-      ) : (
+      <TouchableOpacity onPress={() => navigateToProfile(user)}>
         <Image
-          source={require('./../assets/images/avatar.png')}
+          source={
+            user?.profile_picture
+              ? { uri: `https://tbooke.net/storage/${user.profile_picture}` }
+              : profileData?.profile_picture
+              ? { uri: `https://tbooke.net/storage/${profileData.profile_picture}` }
+              : require('./../assets/images/avatar.png')
+          }
           style={styles.profileImage}
           resizeMode="cover"
         />
-      )}
+      </TouchableOpacity>
+
       <View style={styles.commentContent}>
-        {item.user ? (
-          <TouchableOpacity onPress={() => navigateToProfile(item.user)}>
-            <Text style={styles.commentUserName}>
-              {item.user.profile_type === 'institution'
-                ? item.user.institutionDetails?.institution_name
-                : `${item.user.first_name} ${item.user.surname}`}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={styles.commentUserName}>Anonymous</Text>
-        )}
+        <TouchableOpacity onPress={() => navigateToProfile(user)}>
+             <Text style={styles.commentUserName}>
+            {user?.profile_type === 'institution'
+              ? user.institutionDetails?.institution_name || 'Institution Name Unavailable'
+              : `${user.first_name || ''} ${user.surname || ''}`.trim() || 'Unknown Author'}
+          </Text>
+        </TouchableOpacity>
+
         <Text style={styles.commentText}>{item.content || 'No comment content.'}</Text>
+        
         <Text style={styles.commentTime}>
           {item.created_at ? formatDate(item.created_at) : ''}
         </Text>
-        {/* <Text>{item.created_at}</Text> */}
       </View>
     </View>
   );
-  
-  
+};
+
 
   const handleMediaPress = (mediaIndex, mediaArray) => {
     setCurrentMediaIndex(mediaIndex);
@@ -349,14 +404,15 @@ const Feed = ({ user }) => {
 
   const renderPostItem = ({ item }) => {
     const postId = item.original_post?.id || item.id;
-
     // Skip rendering if postId is undefined to prevent errors
     if (!postId) {
       console.warn('Post skipped due to undefined postId:', item);
       return null;
     }
+    const isLiked = item.isLiked || false; // Get the like status
+    const likesCount = item.likes_count || 0; // Get the likes count
 
-    const isLiked = item.original_post?.isLiked || item.isLiked;
+    // const isLiked = item.original_post?.isLiked || item.isLiked ;
     const isCurrentUserPost = item.user?.id === user?.id;
     const isDropdownActive = activeDropdownPostId === postId;
     const areCommentsActive = activeCommentsPostIds.includes(postId);
@@ -389,7 +445,7 @@ const Feed = ({ user }) => {
     const displayMedia = mediaArray.slice(0, MAX_MEDIA_DISPLAY);
     const remainingMediaCount = mediaCount > MAX_MEDIA_DISPLAY ? mediaCount - MAX_MEDIA_DISPLAY : 0;
 
-    // Add debugging logs (optional, remove in production)
+    // Added debugging logs (optional, remove in production)
     console.log('mediaArray:', mediaArray, 'Type:', typeof mediaArray, Array.isArray(mediaArray));
     console.log('displayMedia:', displayMedia, 'Type:', typeof displayMedia, Array.isArray(displayMedia));
 
@@ -421,8 +477,7 @@ const Feed = ({ user }) => {
               <Text style={styles.userName}>{userName}</Text>
             </TouchableOpacity>
             <Text style={styles.postTime}>
-          {item.created_at ? formatDate(item.created_at) : ''}
-              {/* {item.created_at ? new Date(item.created_at).toLocaleString() : ''} */}
+              {item.created_at ? formatDate(item.created_at) : ''}
             </Text>
             <Text style={styles.postContent}>
               {item.original_post?.content || item.content || 'No content available.'}
@@ -510,78 +565,79 @@ const Feed = ({ user }) => {
               </View>
             )}
           </View>
+          <View>
+            {/* Dropdown Button */}
+      <TouchableOpacity style={styles.dropdownButton} onPress={() => toggleDropdown(item.id)}>
+        <Icon name="more-horizontal" size={24} color="#008080" />
+      </TouchableOpacity>
 
-          {/* Dropdown Button */}
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => setActiveDropdownPostId(isDropdownActive ? null : postId)}
-          >
-            <Icon name="ellipsis-v" size={24} color="#333" />
-            {isDropdownActive && (
-              <View style={styles.dropdownMenu}>
-                {isCurrentUserPost ? (
-                  <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => handleDeletePost(postId)}
-                  >
-                    <Text style={styles.dropdownText}>Delete</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => handleFollow(item.user?.userid)}
-                  >
-                    <Text style={styles.dropdownText}>Follow</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
+      {/* Dropdown Menu */}
+      {visibleDropdownPostId === item.id && (
+        <View style={styles.dropdownMenu}>
+          {item.user.id === userId ? (
+            // If the post belongs to the authenticated user, show the Delete button
+            <TouchableOpacity 
+              style={styles.dropdownItem} 
+              onPress={() => {
+                handleDeletePost(item.id); // Call delete function
+                handleCloseDropdown();
+              }}
+            >
+              <Text style={styles.dropdownText}>Delete</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.dropdownItem} 
+              onPress={() => {
+                handleFollow(item.user.id);
+                handleCloseDropdown();
+              }}
+            >
+              <Text style={styles.dropdownText}>Follow</Text>
+            </TouchableOpacity>
+          )}
         </View>
-
-        {/* Actions Section */}
+      )}
+    </View>
+        </View>
         <View style={styles.actions}>
-          {/* Like Button */}
-          <TouchableOpacity
-            style={[styles.actionButton,{ flexDirection: 'column', alignItems: 'center' }]}
-            onPress={() => (isLiked ? handleUnlikePost(postId) : handleLikePost(postId))}
-          >
-            <Icon
-              name={isLiked ? 'thumbs-up' : 'thumbs-o-up'}
-              size={16}
-              color={isLiked ? 'blue' : '#555'}
-            />
-            <Text style={styles.actionText}>
-              {isLiked ? 'Unlike' : 'Like'} ({item.likes_count || 0})
-            </Text>
-          </TouchableOpacity>
+  {/* Like Button */}
+  <TouchableOpacity
+    style={[styles.actionButton, { flexDirection: 'column', alignItems: 'center' }]}
+    onPress={() => (isLiked ? handleUnlikePost(postId) : handleLikePost(postId))}
+  >
+    <Icon
+      name={isLiked ? 'thumbs-down' : 'thumbs-up'}
+      size={18}
+      color={isLiked ? 'blue' : '#008080'}
+    />
+    <Text style={styles.actionText}>
+      {isLiked ? 'Unlike' : 'Like'} ({likesCount})
+    </Text>
+  </TouchableOpacity>
 
-          {/* Comment Button */}
-          <TouchableOpacity style={[styles.actionButton,{ flexDirection: 'column', alignItems: 'center' }]} onPress={() => toggleComments(postId)}>
-            <Icon name="comment" size={16} color="#555" />
-            <Text style={styles.actionText}>Comment ({item.comments_count || 0})</Text>
-          </TouchableOpacity>
+  {/* Comment Button */}
+  <TouchableOpacity
+    style={[styles.actionButton, { flexDirection: 'column', alignItems: 'center' }]}
+    onPress={() => toggleComments(postId)}
+  >
+    <Icon name="message-square" size={18} color="#008080" />
+    <Text style={styles.actionText}>Comment ({item.comments_count || 0})</Text>
+  </TouchableOpacity>
 
-          {/* Repost Button */}
-          <TouchableOpacity
-            style={[styles.actionButton,{ flexDirection: 'column', alignItems: 'center' }]}
-            onPress={() => handleRepostPost(postId)}
-            disabled={isReposting}
-          >
-            <Icon name="retweet" size={16} color="#555" />
-            <Text style={styles.actionText}>Repost ({item.repost_count || 0})</Text>
-            {isReposting && (
-              <ActivityIndicator size="small" color="#28a745" style={{ marginLeft: 5 }} />
-            )}
-          </TouchableOpacity>
-
-          {/* Share Button */}
-          <TouchableOpacity style={[styles.actionButton,{ flexDirection: 'column', alignItems: 'center' }]} onPress={() => handleSharePost(postId)}>
-            <Icon name="share" size={16} color="#555" />
-            <Text style={styles.actionText}>Share</Text>
-          </TouchableOpacity>
-
-        </View>
+  {/* Repost Button */}
+  <TouchableOpacity
+    style={[styles.actionButton, { flexDirection: 'column', alignItems: 'center' }]}
+    onPress={() => handleRepostPost(postId)}
+    disabled={isReposting}
+  >
+    <Icon name="repeat" size={18} color="#008080" />
+    <Text style={styles.actionText}>Repost ({item.repost_count || 0})</Text>
+    {isReposting && (
+      <ActivityIndicator size="small" color="#28a745" style={{ marginLeft: 5 }} />
+    )}
+  </TouchableOpacity>
+</View>
 
         {/* Conditionally render comments and comment input */}
         {areCommentsActive && (
@@ -611,7 +667,6 @@ const Feed = ({ user }) => {
             </View>
           </>
         )}
-
         {/* Image Viewing Modal */}
         <Modal
           isVisible={isImageViewingVisible}
@@ -636,6 +691,9 @@ const Feed = ({ user }) => {
 
   return (
     <View style={styles.container}>
+        {loading && <ActivityIndicator size="small" color="#456" />}
+        {error && <Text style={styles.errorText}>{error}</Text>}
+      {/* Success Modal */}
       <Modal
         isVisible={successModalVisible} // Changed from 'visible' to 'isVisible'
         onBackdropPress={() => setSuccessModalVisible(false)} // Handle backdrop press to close
@@ -690,259 +748,4 @@ const Feed = ({ user }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    marginTop:-30,
-  },
-  userContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderColor: '#ddd',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  button: {
-    marginLeft: 10,
-    padding: 10,
-    backgroundColor: '#ddd',
-    borderRadius: 15,
-    paddingHorizontal: 10,
-
-  },
-  buttonText: {
-    color: '#333',
-  },
-  errorText: {
-    color: 'red',
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  scrollContainer: {
-    paddingBottom: 20,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#555',
-  },
-  postBox: {
-    backgroundColor: '#fff',
-    padding: 10,
-    marginHorizontal: 1,
-    borderRadius: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-    backgroundColor: '#f5f5f5',
-    borderTopColor: '#008080',
-    borderTopWidth: 1,
-  },
-  userImageContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    // alignItems: 'center',
-  },
-  userImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#008080'
-  },
-  postDetails: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  userName: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#666',
-  },
-  postTime: {
-    color: '#800',
-    fontSize: 7,
-    marginTop: 2,
-  },
-  postContent: {
-    marginTop: 10,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  mediaContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  mediaItem: {
-    width: (width - 40) / 3, // Adjust based on your design
-    height: (width - 40) / 3,
-    margin: 5,
-    borderRadius: 10,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  mediaImage: {
-    width: '100%',
-    height: '100%',
-  },
-  mediaVideo: {
-    width: '100%',
-    height: '100%',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlayText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  dropdownButton: {
-    padding: 5,
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 30,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-    zIndex: 1000,
-  },
-  dropdownItem: {
-    padding: 40,
-  },
-  dropdownText: {
-    fontSize: 12,
-    color: '#333',
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 10,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionText: {
-    marginLeft: 5,
-    fontSize: 14,
-    color: '#555',
-  },
-  commentsList: {
-    maxHeight: 200,
-    marginTop: 10,
-  },
-  commentItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  profileImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: '#008080'
-
-  },
-  commentContent: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  commentUserName: {
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  commentText: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 2,
-  },
-  commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    paddingTop: 10,
-  },
-  commentInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    marginRight: 10,
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '100%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  imageModal: {
-    margin: 0, // Fullscreen modal
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitButton: {
-    backgroundColor: 'maroon',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 30,
-  },
-  submitButtonText: {
-    color: '#fff',
-  },
-  commentsList: {
-    height: 'auto',    // Set height to auto
-    marginTop: 10,
-  },
-});
-
 export default Feed;

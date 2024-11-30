@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react'; 
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,13 +18,12 @@ import * as ImagePicker from 'expo-image-picker';
 
 const CreateGroup = () => {
   const { authToken } = useContext(AuthContext);
-
+  
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [thumbnail, setThumbnail] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Request permissions on component mount
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -39,19 +38,20 @@ const CreateGroup = () => {
     })();
   }, []);
 
-  // Function to handle image selection
   const selectImage = async () => {
     try {
-      let result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true, // Allows user to crop the image
-        aspect: [4, 3], // Aspect ratio
-        quality: 0.7, // Compression quality
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
       });
 
-      // Check if the result is not cancelled and has a uri
-      if (!result.cancelled && result.uri) {
-        setThumbnail(result);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        setThumbnail(selectedImage);
+      } else {
+        Alert.alert('No image selected', 'Please select an image to continue.');
       }
     } catch (error) {
       console.error('ImagePicker Error: ', error);
@@ -59,7 +59,6 @@ const CreateGroup = () => {
     }
   };
 
-  // Function to handle form submission
   const handleSubmit = async () => {
     if (!name || !description) {
       Alert.alert('Validation Error', 'Please fill all required fields.');
@@ -77,22 +76,21 @@ const CreateGroup = () => {
       const fileType = uriParts[uriParts.length - 1];
 
       formData.append('thumbnail', {
-        uri:
-          Platform.OS === 'android' ? thumbnail.uri : thumbnail.uri.replace('file://', ''),
+        uri: Platform.OS === 'android' ? thumbnail.uri : thumbnail.uri.replace('file://', ''),
         name: `thumbnail.${fileType}`,
         type: `image/${fileType}`,
       });
     }
 
     try {
-      const response = await api.post('/groups', formData, {  // Corrected endpoint
+      const response = await api.post('/groups', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${authToken}`, // Include token if needed
         },
       });
 
       Alert.alert('Success', 'Group created successfully!');
-      // Reset form or navigate as needed
       setName('');
       setDescription('');
       setThumbnail(null);

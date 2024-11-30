@@ -19,7 +19,7 @@ const AddComment = ({ postId }) => {
                 post_id: postId,
                 content: comment,
             });
-            // Optionally update comments in parent component or use a state management solution
+            
             Alert.alert('Success', 'Comment added.');
             setComment('');
         } catch (error) {

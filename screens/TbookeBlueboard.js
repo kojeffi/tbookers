@@ -7,7 +7,7 @@ import Navbar from './Navbar';  // Import your Navbar component
 const TbookeBlueboard = () => {
   const [posts, setPosts] = useState([]);
   const navigation = useNavigation();
-  const apiUrl = 'http://192.168.12.117:8000/api/tbooke-blueboard'; // Replace with your API endpoint
+  const apiUrl = 'https://tbooke.net/api/api/tbooke-blueboard'; 
 
   useEffect(() => {
     fetchPosts();

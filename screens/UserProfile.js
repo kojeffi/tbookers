@@ -64,25 +64,26 @@ const UserProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    borderTopColor: '#008080',
-    borderTopWidth: 1,
+    padding: 8,
+    backgroundColor: '#fff',
     paddingHorizontal: 0,
-    paddingVertical:1,
+    paddingVertical: 0,
+    // borderTopColor: '#008080',
+    // borderTopWidth: 1,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 15,
-    borderRadius: 1,
+    borderRadius: 15,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
     elevation: 3,
-    marginBottom: 20,
+    marginHorizontal: 4,
+    marginVertical: 5,
   },
   avatar: {
     width: 60,
@@ -90,22 +91,25 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginRight: 15,
     borderColor: '#008080',
-    borderWidth: 2,
+    borderWidth: 1,
   },
   infoSection: {
     flex: 1,
     justifyContent: 'center',
   },
   button: {
-    backgroundColor: '#008080',
+    backgroundColor: '#ddd',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10, // Adjust horizontal padding to reduce width
     borderRadius: 20,
     alignItems: 'center',
+    width: 200, // Set a specific width for the button
+    marginHorizontal: 10,
   },
   buttonText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 14,
+    // fontWeight:'bold',
   },
   errorText: {
     color: 'red',

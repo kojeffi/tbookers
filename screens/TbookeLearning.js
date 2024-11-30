@@ -123,7 +123,7 @@ const TbookeLearning = ({ navigation }) => {
           >
             <View style={styles.buttonContent}>
               <Icon name="calendar" size={14} color="#fff" />
-              <Text style={styles.buttonText}>Schedule a Live Class</Text>
+              <Text style={styles.buttonText}>Schedule  Class</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -190,21 +190,18 @@ const TbookeLearning = ({ navigation }) => {
                 style={styles.thumbnail}
                 resizeMode="cover"
               />
-              {/* Start Learning Button on Thumbnail */}
-              <TouchableOpacity
-                style={styles.startButtonOnThumbnail}
-                onPress={() => navigation.navigate('ContentDetail', { slug: content.slug })}
-              >
-                <Icon name="play" size={20} color="#fff" />
-                <Text style={styles.startButtonText}>Play</Text>
-              </TouchableOpacity>
             </View>
           </TouchableOpacity>
 
           <View style={styles.cardHeader}>
-            <Text style={styles.author}>
-              {user ? `${user.first_name} ${user.surname}` : 'Unknown Author'}
-            </Text>
+          <Text style={styles.author}>
+            {user?.profile_type === 'institution'
+              ? `${user.first_name || ''} ${user.surname || ''}`.trim() || 'Institution Name Unavailable'
+              : user
+                ? `${user.first_name || ''} ${user.surname || ''}`.trim() || 'Unknown Author'
+                : 'Unknown Author'}
+          </Text>
+
             <TouchableOpacity
               onPress={() => navigation.navigate('ContentDetail', { slug: content.slug })}
             >
@@ -240,7 +237,7 @@ const TbookeLearning = ({ navigation }) => {
               onPress={() => navigation.navigate('ContentDetail', { slug: content.slug })}
             >
               <View style={styles.buttonContent}>
-                <Icon name="play" size={20} color="#fff" />
+                <Icon name="arrow-right" size={12} color="#fff" />
                 <Text style={styles.startButtonText}>Start Learning</Text>
               </View>
             </TouchableOpacity>
@@ -255,18 +252,14 @@ const TbookeLearning = ({ navigation }) => {
       <Navbar navigation={navigation} />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.mainContent}>
-          <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>Tbooke Learning</Text>
-          </View>
-
           {/* Button Container */}
           <View style={styles.buttonRow}>{renderButtons()}</View>
 
           {/* Search Input */}
           <View style={styles.searchContainer}>
-            <Text style={styles.label}>Search</Text>
+            {/* <Text style={styles.label}>Search</Text> */}
             <View style={styles.searchInputContainer}>
-              <Icon name="search" size={20} color="#aaa" style={styles.searchIcon} />
+              <Icon name="search" size={20} color="#008080" style={styles.searchIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Search by title, creator, or categories"
@@ -298,45 +291,36 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginVertical: 15,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop:20,
+    marginVertical: 10,
+    flexWrap: 'wrap',
   },
   buttonContainer: {
-    flexDirection: 'column',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
   secondaryButton: {
-    backgroundColor: '#888',
+    backgroundColor: '#30d5c8',
     borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginHorizontal: 10,
-    marginVertical: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginHorizontal: 5,
+    marginVertical: 5,
   },
   primaryButton: {
     backgroundColor: '#008080',
     borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginHorizontal: 10,
-    marginVertical: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginHorizontal: 5,
+    marginVertical: 5,
   },
   myContentButton: {
-    backgroundColor: '#003366',
+    backgroundColor: '#800',
     borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginHorizontal: 10,
-    marginVertical: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginHorizontal: 5,
+    marginVertical: 5,
   },
   buttonContent: {
     flexDirection: 'row',
@@ -344,119 +328,126 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    marginLeft: 8,
+    fontSize: 12,
+    marginLeft: 5,
+  },
+  noContentText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 12,
   },
   card: {
+    marginVertical: 2,
+    borderRadius: 5,
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginVertical: 10,
-    elevation: 2,
+    overflow: 'hidden',
+    // marginHorizontal: 2,
+    width: '100%',
   },
   thumbnail: {
-    height: 200,
-    borderRadius: 10,
+    height: 150,
+    width: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
   },
   cardHeader: {
-    marginTop: 15,
-  },
-  author: {
-    color: '#777',
-    fontSize: 14,
+    marginTop: 160, // Pushes content below the thumbnail
+    paddingHorizontal: 10, // Adds padding only for the content
   },
   contentTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#4682B4',
   },
   categoryContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   categoryBadge: {
-    backgroundColor: '#eee',
+    backgroundColor: '#ddd',
     color: '#333',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
     marginRight: 5,
     marginTop: 5,
   },
+  author: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+  },
   contentStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginTop: 10,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 20,
   },
   statText: {
     marginLeft: 5,
+    fontSize: 16,
     color: '#666',
   },
   cardBody: {
-    marginTop: 10,
+    marginTop: 1,
+    paddingHorizontal: 10, // Adds padding only for the body content
   },
   description: {
-    color: '#666',
     fontSize: 14,
+    color: '#555',
   },
   startButton: {
-    marginTop: 10,
     backgroundColor: '#008080',
-    paddingVertical: 10,
     borderRadius: 8,
+    marginTop: 10,
+    paddingVertical: 7,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startButtonOnThumbnail: {
-    position: 'absolute',
-    bottom: 80,
-    right: 130,
-    backgroundColor: 'rgba(255, 0, 0, 0.9)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginHorizontal: 50,
+    marginBottom:30,
   },
   startButtonText: {
     color: '#fff',
+    fontSize: 14,
     marginLeft: 5,
   },
   searchContainer: {
-    marginVertical: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  // label: {
+  //   fontSize: 14,
+  //   color: '#333',
+  //   marginBottom: 8,
+  //   fontWeight: 'bold',
+
+  // },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f1f1',
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
     paddingHorizontal: 10,
-    marginTop: 5,
+    elevation: 3,
   },
   searchIcon: {
-    marginRight: 5,
+    marginRight: 10,
   },
   input: {
     flex: 1,
+    fontSize: 14,
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    fontSize: 16,
-    color: '#333',
   },
-  noContentText: {
-    fontSize: 18,
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 20,
+  contentContainer: {
+    paddingHorizontal: 2,
   },
 });
+
 
 export default TbookeLearning;

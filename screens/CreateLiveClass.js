@@ -2,8 +2,8 @@ import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
 import Navbar from './Navbar';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { AuthContext } from './AuthContext'; // Import AuthContext to access the token
-import api from './api'; // Import the custom api with token interceptor
+import { AuthContext } from './AuthContext';
+import api from './api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const CreateLiveClass = ({ navigation }) => {
@@ -27,7 +27,7 @@ const CreateLiveClass = ({ navigation }) => {
         { label: 'Other', value: 'Other' },
     ]);
 
-    const { authToken } = useContext(AuthContext); // Get authToken from AuthContext
+    const { authToken } = useContext(AuthContext);
 
     const handleDateChange = (event, selectedDate) => {
         const currentDate = selectedDate || classDate;
@@ -51,18 +51,17 @@ const CreateLiveClass = ({ navigation }) => {
         const data = {
             class_name: className,
             class_category: classCategory,
-            class_date: classDate.toISOString().split('T')[0], // Format the date as needed
-            class_time: classTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), // Format time
+            class_date: classDate.toISOString().split('T')[0],
+            class_time: classTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             class_description: classDescription,
         };
 
         try {
-            // Use the custom API instance (which includes token) to POST the data
-            const response = await api.post('/live-classes', data); // Laravel 'live-classes.store' route
+            
+            const response = await api.post('/live-classes', data);
 
             if (response.status === 201 || response.status === 200) {
                 Alert.alert("Success", "Class created successfully!");
-                // Optionally, reset form fields here
                 setClassName('');
                 setClassCategory(null);
                 setClassDate(new Date());

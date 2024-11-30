@@ -7,7 +7,7 @@ import Login from './screens/Login';
 import Register from './screens/Register';
 import Post from './screens/Post';
 import Profile from './screens/Profile';
-import OwnProfile from './screens/OwnProfile'; // Ensure this screen is created
+import OwnProfile from './screens/OwnProfile';
 import Settings from './screens/Settings';
 import LearningResources from './screens/LearningResources';
 import TbookeLearning from './screens/TbookeLearning';
@@ -38,12 +38,16 @@ import MyContent from './screens/MyContent';
 import MyGroups from './screens/MyGroups';
 // import MediaGallery from './screens/MediaGallery';
 import Feed from './screens/Feed';
-
-import CreateModal from './screens/CreateModal'; // Modal for creating posts
-import ResourceDetail from './screens/ResourceDetail'; // Adjust the import path as necessary
-
+import CreateModal from './screens/CreateModal'; 
+import ResourceDetail from './screens/ResourceDetail';
 import MyResources from './screens/MyResources';
 import EditResource from './screens/EditResourceForm';
+import PostDetail from './screens/PostDetail';
+import EditContent from './screens/EditContent';
+
+import SchoolDetails from './screens/SchoolDetails';
+
+
 
 const Stack = createStackNavigator();
 
@@ -96,9 +100,17 @@ export default function App() {
           <Stack.Screen name ="MyResources" component={MyResources} options={{headerShown: false }} />
           {/* <Stack.Screen name="MediaGallery" component={MediaGallery} options={{ headerShown: false }} />
          */}
-
+           
+           <Stack.Screen name ="PostDetail" component={PostDetail} options={{headerShown: false }} />
+          
+           <Stack.Screen name ="EditContent" component={EditContent} options={{headerShown: false }} />
+           
 
           <Stack.Screen name="EditResource" component={EditResource}  options={{headerShown: false }} />
+        
+          <Stack.Screen name="SchoolDetails" component={SchoolDetails}  options={{headerShown: false }} />
+        
+        
         </Stack.Navigator>
       </AuthProvider>
     </NavigationContainer>

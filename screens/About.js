@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Footer from './Footer';  // Import your Navbar component
+import Footer from './Footer';
 
 
 const About = ({ navigation }) => {
@@ -181,13 +181,13 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 150, // Adjusted height to reduce size
+    height: 150,
     marginBottom: 10,
   },
   circleImage: {
-    width: 100, // Reduced width
-    height: 100, // Reduced height
-    borderRadius: 50, // Adjusted for smaller circle size
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     margin: 10,
   },
   imageRow: {
@@ -207,14 +207,14 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   maroonButton: {
-    backgroundColor: '#800000',  // Maroon color
-    paddingVertical: 10,         // Adjust padding for the button
+    backgroundColor: '#800000',
+    paddingVertical: 10,         
     paddingHorizontal: 20,
-    borderRadius: 5,             // Optional: Adds rounded corners
-    marginHorizontal: 10,        // Spacing between the buttons
+    borderRadius: 5,             
+    marginHorizontal: 10,        
   },
   buttonText: {
-    color: '#fff',               // White text for contrast
+    color: '#fff',               
     fontSize: 14,
     textAlign: 'center',
   },
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#007bff',
     fontWeight: 'bold',
-    textDecorationLine: 'underline', // To mimic the link style
+    textDecorationLine: 'underline',
   },
   footerLinks: {
     flexDirection: 'row',

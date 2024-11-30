@@ -1,10 +1,10 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { View, Text, Image, Button, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { AuthContext } from './AuthContext'; // Your auth context
-import { fetchPosts, fetchUserProfile } from './api'; // Your custom API functions
+import { AuthContext } from './AuthContext';
+import { fetchPosts, fetchUserProfile } from './api';
 
 const ActivityFeed = () => {
-  const { user, token } = useContext(AuthContext); // Assuming you get user and token from context
+  const { user, token } = useContext(AuthContext);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -12,7 +12,7 @@ const ActivityFeed = () => {
     const loadPosts = async () => {
       setLoading(true);
       try {
-        const fetchedPosts = await fetchPosts(token); // Call your API to fetch posts
+        const fetchedPosts = await fetchPosts(token);
         setPosts(fetchedPosts);
       } catch (error) {
         console.error(error);

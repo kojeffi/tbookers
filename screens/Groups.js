@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import api from './api'; // Your custom API instance
 import { AuthContext } from './AuthContext'; // Import AuthContext for authentication
@@ -20,16 +20,14 @@ const GroupsScreen = () => {
     useEffect(() => {
         const fetchGroups = async () => {
             try {
-                console.log('Fetching groups from /groups endpoint');
                 const response = await api.get('/groups', {
                     headers: {
                         Authorization: `Bearer ${authToken}`,
                     },
                 });
-                console.log('Groups fetched successfully:', response.data);
-                setGroups(response.data.data || []); // Ensure groups is set to an empty array if undefined
+                console.log('Groups fetched successfully:', response.data); // Log the full response
+                setGroups(response.data.groups || []); // Ensure groups is set to an empty array if undefined
             } catch (error) {
-                console.error('Error fetching groups', error);
                 handleFetchError(error);
             } finally {
                 setLoadingGroups(false);
@@ -44,7 +42,6 @@ const GroupsScreen = () => {
     const handleFetchError = (error) => {
         if (error.response) {
             console.error('Response data:', error.response.data);
-            console.error('Response status:', error.response.status);
             handleErrorResponse(error.response.status);
         } else {
             Alert.alert('Network Error', 'Please check your internet connection.');
@@ -74,7 +71,6 @@ const GroupsScreen = () => {
                     Authorization: `Bearer ${authToken}`,
                 },
             }); // API call to join group
-            console.log('Joined group successfully:', response.data);
             Alert.alert('Success', 'You have successfully joined the group.');
             // Update the group membership status locally
             setGroups(prevGroups =>
@@ -85,7 +81,6 @@ const GroupsScreen = () => {
                 )
             );
         } catch (error) {
-            console.error('Error joining group', error);
             handleJoinError(error);
         } finally {
             setJoiningGroupId(null);
@@ -105,18 +100,18 @@ const GroupsScreen = () => {
 
     const renderGroupItem = ({ item }) => {
         const isMember = Array.isArray(item.members) && item.members.includes(userId);
-        
+
         return (
             <View style={styles.card}>
-                <Image 
-                    source={{ uri: item.thumbnail ? `https://tbooke.net/storage/${item.thumbnail}` : DEFAULT_IMAGE_URL }} 
-                    style={styles.thumbnail} 
+                <Image
+                    source={{ uri: item.thumbnail ? `https://tbooke.net/storage/${item.thumbnail}` : DEFAULT_IMAGE_URL }}
+                    style={styles.thumbnail}
                 />
                 <View style={styles.cardBody}>
                     <Text style={styles.cardTitle}>{item.name}</Text>
                     <Text style={styles.cardDescription}>
-                        {item.description && item.description.length > 60 
-                            ? `${item.description.slice(0, 60)}...` 
+                        {item.description && item.description.length > 60
+                            ? `${item.description.slice(0, 60)}...`
                             : item.description || 'No description available'}
                     </Text>
                     <View style={styles.buttonContainer}>
@@ -154,6 +149,22 @@ const GroupsScreen = () => {
         );
     };
 
+    const renderHeader = () => (
+        <View style={styles.headerContainer}>
+            <Text style={styles.heading}>Groups</Text>
+            <View style={styles.buttonScrollContainer}>
+                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateGroup')}>
+                    <Icon name="add-circle" size={16} color="#fff" />
+                    <Text style={styles.buttonText}> Create Group</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('MyGroups')}>
+                    <Icon name="list-circle" size={16} color="#fff" />
+                    <Text style={styles.buttonText}> My Groups</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
     if (loading || loadingGroups) {
         return (
             <View style={styles.loadingContainer}>
@@ -164,32 +175,15 @@ const GroupsScreen = () => {
 
     return (
         <View style={styles.container}>
-        <Navbar navigation={navigation} />
-
-        <ScrollView style={styles.scrollcontainer}>
-            <Text style={styles.heading}>Groups</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.buttonScrollContainer}>
-                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateGroup')}>
-                    <Icon name="add-circle" size={16} color="#fff" />
-                    <Text style={styles.buttonText}> Create Group</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('MyGroups')}>
-                    <Icon name="list-circle" size={16} color="#fff" />
-                    <Text style={styles.buttonText}> My Groups</Text>
-                </TouchableOpacity>
-            </ScrollView>
-            {groups.length > 0 ? (
-                <FlatList
-                    data={groups}
-                    renderItem={renderGroupItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    numColumns={1}
-                    contentContainerStyle={styles.list}
-                />
-            ) : (
-                <Text style={styles.noGroupsText}>No groups available.</Text>
-            )}
-        </ScrollView>
+            <Navbar navigation={navigation} />
+            <FlatList
+                data={groups}
+                renderItem={renderGroupItem}
+                keyExtractor={(item) => item.id.toString()}
+                ListHeaderComponent={renderHeader}
+                contentContainerStyle={styles.list}
+                ListEmptyComponent={<Text style={styles.noGroupsText}>No groups available.</Text>}
+            />
         </View>
     );
 };
@@ -199,21 +193,25 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5', // Light gray background for contrast
     },
+    headerContainer: {
+        paddingVertical: 20,
+        paddingHorizontal: 10,
+        backgroundColor: '#fff',
+    },
     heading: {
         fontSize: 16,
         fontWeight: 'bold',
-        marginVertical: 20,
         textAlign: 'center',
         color: '#333', // Darker text for better readability
     },
     buttonScrollContainer: {
         flexDirection: 'row',
-        marginBottom: 10,
-        paddingHorizontal: 10,
+        justifyContent: 'center',
+        marginVertical: 10,
     },
     createButton: {
-        backgroundColor: '#007bff',
-        paddingVertical: 10,
+        backgroundColor: '#008080',
+        paddingVertical: 5,
         paddingHorizontal: 12,
         borderRadius: 10,
         marginHorizontal: 5,
@@ -246,25 +244,18 @@ const styles = StyleSheet.create({
     thumbnail: {
         height: 150,
         width: '100%',
-        resizeMode: 'cover',
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
     },
     cardBody: {
         padding: 10,
-        alignItems: 'center',
     },
     cardTitle: {
+        fontWeight: 'bold',
         fontSize: 16,
         marginBottom: 5,
-        textAlign: 'center',
-        color: '#333',
-        fontWeight: 'bold',
     },
     cardDescription: {
         fontSize: 14,
-        textAlign: 'center',
-        color: '#877',
+        color: '#666',
         marginBottom: 10,
     },
     buttonContainer: {
@@ -272,27 +263,27 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         width: '100%',
     },
-    viewButton: {
-        backgroundColor: '#007bff',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     joinButton: {
         backgroundColor: '#28a745',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 10,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
         flexDirection: 'row',
         alignItems: 'center',
     },
     joinedButton: {
-        backgroundColor: '#6c757d', // Gray for joined state
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 20,
+        backgroundColor: '#6c757d',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    viewButton: {
+        backgroundColor: '#006060',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
         flexDirection: 'row',
         alignItems: 'center',
     },
@@ -307,9 +298,12 @@ const styles = StyleSheet.create({
     },
     noGroupsText: {
         textAlign: 'center',
-        marginTop: 20,
+        fontSize: 16,
         color: '#666',
-        fontSize: 14,
+        marginTop: 20,
+    },
+    list: {
+        paddingBottom: 100, // Add some padding at the bottom
     },
 });
 

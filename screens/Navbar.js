@@ -1,29 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Dimensions, TextInput, ScrollView } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import { useNavigation } from '@react-navigation/native';
 
-const Navbar = ({ notificationCount }) => {
+
+import React, { useState, useContext } from 'react';  
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, ScrollView, Image } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Feather';
+import { AuthContext } from './AuthContext';
+
+const Navbar = () => {
+  const { authToken, notificationCount, profileData } = useContext(AuthContext); // Use profileData instead of user
   const navigation = useNavigation();
+  const route = useRoute(); // Get the current route
   const [menuVisible, setMenuVisible] = useState(false);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const handleMenuClose = () => setMenuVisible(false);
-  const handleDropdownToggle = () => setDropdownVisible(!dropdownVisible);
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      console.log("Searching for:", searchQuery);
+      console.log('Searching for:', searchQuery);
       setSearchQuery('');
     }
   };
 
+  const isActive = (screen) => route.name === screen;
+
   return (
     <View style={styles.navbar}>
       <View style={styles.topRow}>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.logoContainer}>
-          <Image source={require('./../assets/images/splash.png')} style={styles.logoImage} resizeMode="contain" />
+        <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.collapseIcon}>
+          <Icon name="menu" size={30} color="#333" />
         </TouchableOpacity>
 
         <View style={styles.searchContainer}>
@@ -40,89 +43,148 @@ const Navbar = ({ notificationCount }) => {
         </View>
 
         <View style={styles.iconContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-            <Icon name="bell" size={24} color="#008080" />
-            {notificationCount > 0 && (
-              <View style={[styles.badge, styles.badgeNotification]}>
-                <Text style={styles.badgeText}>{notificationCount}</Text>
+          {authToken && (
+            <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+              <Icon name="bell" size={24} color="#333" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>
+                  {notificationCount > 0 ? notificationCount : '0'}
+                </Text>
               </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setMenuVisible(true)} 
-            style={[styles.collapseIcon, styles.pillBackground]}
-          >
-            <Icon name="ellipsis-h" size={24} color="#008080" />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
+        <TouchableOpacity onPress={() => navigation.navigate('Post')}>
+          <Image source={require('./../assets/images/splash.png')} style={styles.profileImage} />
+        </TouchableOpacity>
+        
+          <TouchableOpacity onPress={() => navigation.navigate('Messages')} style={styles.settingsIcon}>
+            <Icon name="mail" size={24} color="#333" />
+          </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.bottomRow}>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.navItem}>
-          <Icon name="home" size={24} color="#008080" />
-          <Text style={styles.navText}>Home</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Post')}
+          style={[styles.navItem, isActive('Post') && styles.activeNavItem]}>
+          <Icon name="home" size={24} color={isActive('Post') ? '#008080' : '#333'} />
+          <Text style={[styles.navText, isActive('Post') && styles.activeNavText]}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('TbookeLearning')} style={styles.navItem}>
-          <Icon name="book" size={24} color="#008080" />
-          <Text style={styles.navText}>T.Learning</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('TbookeLearning')}
+          style={[styles.navItem, isActive('TbookeLearning') && styles.activeNavItem]}>
+          <Icon name="book" size={24} color={isActive('TbookeLearning') ? '#008080' : '#333'} />
+          <Text style={[styles.navText, isActive('TbookeLearning') && styles.activeNavText]}>
+            T.Learning
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('LearningResources')} style={styles.navItem}>
-          <Icon name="shopping-cart" size={24} color="#008080" />
-          <Text style={styles.navText}>T.Resources</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('LearningResources')}
+          style={[styles.navItem, isActive('LearningResources') && styles.activeNavItem]}>
+          <Icon name="shopping-cart" size={24} color={isActive('LearningResources') ? '#008080' : '#333'} />
+          <Text style={[styles.navText, isActive('LearningResources') && styles.activeNavText]}>
+            T.Marketplace
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Groups')} style={styles.navItem}>
-          <Icon name="users" size={24} color="#008080" />
-          <Text style={styles.navText}>T.Groups</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Groups')}
+          style={[styles.navItem, isActive('Groups') && styles.activeNavItem]}>
+          <Icon name="users" size={24} color={isActive('Groups') ? '#008080' : '#333'} />
+          <Text style={[styles.navText, isActive('Groups') && styles.activeNavText]}>T.Groups</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('SchoolsCorner')}
+          style={[styles.navItem, isActive('SchoolsCorner') && styles.activeNavItem]}>
+          <Icon name="book-open" size={24} color={isActive('SchoolsCorner') ? '#008080' : '#333'} />
+          <Text style={[styles.navText, isActive('SchoolsCorner') && styles.activeNavText]}>Schools</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Menu Modal */}
       <Modal
         transparent={true}
         visible={menuVisible}
         animationType="slide"
-        onRequestClose={handleMenuClose}
-      >
+        onRequestClose={() => setMenuVisible(false)}>
         <View style={styles.menuContainer}>
           <View style={styles.menuContent}>
-            <TouchableOpacity onPress={handleMenuClose} style={styles.closeButton}>
-              <Icon name="arrow-left" size={24} color="#008080" />
+            <TouchableOpacity onPress={() => setMenuVisible(false)} style={styles.closeButton}>
+              <Icon name="arrow-left" size={24} color="#fff" />
             </TouchableOpacity>
 
             <ScrollView style={styles.menuItems}>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Home'); handleMenuClose(); }}>
-                <Icon name="dashboard" size={20} color="#008080" style={styles.menuIcon} />
-                <Text style={styles.menuText}>Dashboard</Text>
+              {/* Logo with background color #008080 */}
+              <TouchableOpacity onPress={() => navigation.navigate('Post')} style={[styles.logoContainer, { backgroundColor: '#008080' }]}>
+                <Image
+                  source={require('./../assets/images/tboke.jpg')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+                {/* <Text style={styles.textLogo}>Tbooke</Text> */}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Post'); handleMenuClose(); }}>
-                <Icon name="edit" size={20} color="#008080" style={styles.menuIcon} />
+              {/* <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  navigation.navigate('Home');
+                  setMenuVisible(false);
+                }}>
+                <Icon name="grid" size={20} color="#fff" style={styles.menuIcon} />
+                <Text style={styles.menuText}>Dashboard</Text>
+              </TouchableOpacity> */}
+                   <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  navigation.navigate('Post');
+                  handleMenuClose();
+                }}>
+                <Icon name="edit-2" size={20} color="#333" style={styles.menuIcon} />
                 <Text style={styles.menuText}>Posts</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Groups'); handleMenuClose(); }}>
-                <Icon name="users" size={20} color="#008080" style={styles.menuIcon} />
-                <Text style={styles.menuText}>Groups</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Profile'); handleMenuClose(); }}>
-                <Icon name="user" size={20} color="#008080" style={styles.menuIcon} />
+                <Icon name="user" size={20} color="#333" style={styles.menuIcon} />
                 <Text style={styles.menuText}>Profile</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('LiveClasses'); handleMenuClose(); }}>
-                <Icon name="video-camera" size={20} color="#008080" style={styles.menuIcon} />
-                <Text style={styles.menuText}>Live Classes</Text>
+                <TouchableOpacity 
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  padding: 3, 
+                }} 
+                onPress={() => { 
+                  navigation.navigate('LiveClasses'); 
+                  handleMenuClose(); 
+                }}
+              >
+                <Icon 
+                  name="video" 
+                  size={20} 
+                  color="red"   // Icon is red
+                  style={{ marginRight: 10 }} 
+                />
+                <Text 
+                  style={{ 
+                    fontSize: 16, 
+                    color: 'red'  // Text is also red
+                  }}
+                >
+                  Live Classes
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Settings'); handleMenuClose(); }}>
-                <Icon name="cogs" size={20} color="#008080" style={styles.menuIcon} />
-                <Text style={styles.menuText}>Settings</Text>
-              </TouchableOpacity>
+
+           
               <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Messages'); handleMenuClose(); }}>
-                <Icon name="envelope" size={20} color="#008080" style={styles.menuIcon} />
+                <Icon name="mail" size={20} color="#333" style={styles.menuIcon} />
                 <Text style={styles.menuText}>Messages</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Settings'); handleMenuClose(); }}>
+                <Icon name="settings" size={20} color="#333" style={styles.menuIcon} />
+                <Text style={styles.menuText}>Settings</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => { navigation.navigate('Login'); handleMenuClose(); }}>
-                <Icon name="sign-out" size={20} color="#008080" style={styles.menuIcon} />
+                <Icon name="log-out" size={20} color="#333" style={styles.menuIcon} />
                 <Text style={styles.menuText}>Logout</Text>
               </TouchableOpacity>
+              
             </ScrollView>
           </View>
         </View>
@@ -131,136 +193,148 @@ const Navbar = ({ notificationCount }) => {
   );
 };
 
-const { width, height } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   navbar: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    width: '100%',
     flexDirection: 'column',
-  },
-  logoContainer: {
-    width: 30,
-    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logoImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    paddingTop: 30,
+    paddingHorizontal: 10,
+    width: '100%',
+    position: 'relative',
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
-    marginTop: 20,
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 3,
+  },
+  textLogo: {
+    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 26,
+    fontStyle: 'italic',
+    transform: [{ skewX: '-10deg' }],
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 1, height: 0 },
+    textShadowRadius: 1,
+    marginHorizontal: -20,
+  },
+  collapseIcon: {
+    padding: 5,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ddd',
-    borderRadius: 5,
-    flex: 1,
-    marginHorizontal: 10,
+    position: 'relative',
+    width: '50%',
   },
   searchInput: {
-    flex: 1,
-    paddingHorizontal: 10,
-    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    width: '100%',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
   },
   searchButton: {
-    paddingHorizontal: 10,
+    position: 'absolute',
+    right: 10,
+    padding: 5,
   },
   iconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  collapseIcon: {
-    marginLeft: 10,
-  },
-  badge: {
+  notificationBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: 'red',
+    top: -4,
+    right: -8,
+    backgroundColor: '#f00',
     borderRadius: 10,
-    paddingHorizontal: 5,
-  },
-  badgeNotification: {
-    backgroundColor: '#FF6347',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
+  },
+  profileImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 50,
+    marginLeft: 20,
+  },
+  settingsIcon: {
+    marginLeft: 10,
   },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     marginTop: 10,
-    marginBottom: 10,
+    width: '100%',
   },
   navItem: {
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 5,
+  },
+  activeNavItem: {
+    borderBottomWidth: 2,
+    borderColor: '#008080',
   },
   navText: {
-    color: '#333',
     fontSize: 12,
+    color: '#333',
+  },
+  activeNavText: {
+    color: '#008080',
   },
   menuContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)', // Semi-transparent background
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    backgroundColor: '#008080', // Background color set to #008080
   },
   menuContent: {
-    backgroundColor: '#fff',
-    padding: 20,
+    backgroundColor: '#008080', // Modal background is #008080
     width: '100%',
-    height: '100%', // Occupies the entire screen
+    height: '100%', // Full screen height
+    padding: 20,
     justifyContent: 'flex-start',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
   },
   closeButton: {
     position: 'absolute',
-    top: 15,
-    left: 15,
-    zIndex: 1,
+    top: 10,
+    left: 10,
   },
   menuItems: {
-    marginTop: 60, // To provide space for the close button
+    marginTop: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   menuIcon: {
     marginRight: 10,
   },
   menuText: {
-    color: '#008080',
     fontSize: 18,
+    color: '#fff',
   },
-  //ellipses
-  collapseIcon: {
-    marginLeft: 10,
-    padding: 10, // Adding padding to create a better pill effect
+  logoContainer: {
+    alignItems: 'center',
+    padding: 10,
+    marginBottom: 20,
+    flexDirection: 'row',
   },
-  pillBackground: {
-    backgroundColor: '#f5f5f5', // Light background color #e0f7fa
-    borderRadius: 10, // Rounded corners for pill shape
-    paddingHorizontal: 10, // Padding for horizontal space
-    paddingVertical: 5, // Padding for vertical space
-    alignItems: 'center', // Centering the icon within the pill
-    justifyContent: 'center', // Centering the icon within the pill
+  logoImage: {
+    width: 150,
+    height: 80,
+    marginHorizontal: 100,
   },
 });
 

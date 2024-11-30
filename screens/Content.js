@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, Linking, ActivityIndicator, Alert } from 'react-native';
-import { Card } from 'react-native-paper'; // Material Design card component
-import { Video } from 'expo-av'; // Expo's Video component for handling video playback
-import api from './api'; // API utility for making HTTP requests
-import { AuthContext } from './AuthContext'; // Import AuthContext
+import { Card } from 'react-native-paper';
+import { Video } from 'expo-av';
+import api from './api';
+import { AuthContext } from './AuthContext';
 
 const Content = ({ slug }) => {
-    const { authToken } = useContext(AuthContext); // Use AuthContext
+    const { authToken } = useContext(AuthContext);
     const [content, setContent] = useState(null);
     const [relatedContent, setRelatedContent] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,12 +17,12 @@ const Content = ({ slug }) => {
                 // Set Authorization header with authToken
                 const response = await api.get(`/tbooke-learning/${slug}`, {
                     headers: {
-                        Authorization: `Bearer ${authToken}`, // Include token in request
+                        Authorization: `Bearer ${authToken}`, 
                     },
                 });
                 setContent(response.data);
 
-                // Assuming you have a related endpoint defined
+                
                 const relatedResponse = await api.get(`/tbooke-learning/${slug}/related`, {
                     headers: {
                         Authorization: `Bearer ${authToken}`, // Include token in request
@@ -38,7 +38,7 @@ const Content = ({ slug }) => {
         };
 
         fetchData();
-    }, [slug, authToken]); // Depend on slug and authToken
+    }, [slug, authToken]);
 
     if (loading) {
         return <ActivityIndicator size="large" color="#0000ff" style={{ flex: 1, justifyContent: 'center' }} />;

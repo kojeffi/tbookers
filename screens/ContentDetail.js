@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import api from './api'; // Import your API setup here
+import api from './api';
 import { AuthContext } from './AuthContext';
 import Navbar from './Navbar';
 import Video from 'react-native-video';
@@ -29,7 +29,7 @@ const ContentDetail = ({ route, navigation }) => {
                 setLoading(true);
                 const response = await api.get(`/tbooke-learning/${slug}`, {
                     headers: {
-                        Authorization: `Bearer ${authToken}`, // Include auth token if required
+                        Authorization: `Bearer ${authToken}`,
                     },
                 });
                 setContent(response.data.content);
@@ -154,36 +154,36 @@ const ContentDetail = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f0f2f5' },
-    scrollContainer: { padding: 16 },
+    scrollContainer: { padding: 10 },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f2f5' },
-    loadingText: { marginTop: 10, fontSize: 18, color: '#007bff' },
+    loadingText: { marginTop: 10, fontSize: 14, color: '#007bff' },
     errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f0f2f5' },
     errorText: { marginTop: 10, fontSize: 16, color: '#dc3545', textAlign: 'center' },
     retryButton: { marginTop: 20, backgroundColor: '#007bff', padding: 10, borderRadius: 5 },
     retryButtonText: { color: '#fff', fontWeight: 'bold' },
     noContentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f0f2f5' },
-    noContentText: { fontSize: 18, color: '#555' },
+    noContentText: { fontSize: 14, color: '#555' },
     contentSection: {
         marginBottom: 20,
         padding: 8,
         backgroundColor: '#f4f4f4',
         borderRadius: 10,
     },
-    title: { fontSize: 28, fontWeight: '700', color: '#333' },
-    textContent: { fontSize: 16, color: '#444', lineHeight: 22 },
+    title: { fontSize: 16, fontWeight: '700', color: '#333' },
+    textContent: { fontSize: 14, color: '#444', lineHeight: 22 },
     mediaGallery: { marginTop: 20 },
-    galleryTitle: { fontSize: 22, fontWeight: '600', marginBottom: 15, color: '#007bff' },
+    galleryTitle: { fontSize: 16, fontWeight: '600', marginBottom: 15, color: '#007bff' },
     mediaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     mediaItem: { width: '48%', marginBottom: 15, borderRadius: 10, backgroundColor: '#f9f9f9' },
     image: { width: '100%', height: 150 },
     video: { width: '100%', height: 150 },
     fileLink: { padding: 10, color: '#007bff', textAlign: 'center', textDecorationLine: 'underline' },
-    relatedContentSection: { marginTop: 10, padding: 20, backgroundColor: '#fff', borderRadius: 10 },
-    relatedTitle: { fontSize: 22, fontWeight: '600', marginBottom: 15, color: '#007bff' },
+    relatedContentSection: { marginTop: 10, padding: 10, backgroundColor: '#fff', borderRadius: 10 },
+    relatedTitle: { fontSize: 16, fontWeight: '200', marginBottom: 15, color: '#007bff' },
     relatedItem: { marginBottom: 15, borderRadius: 10, backgroundColor: '#f9f9f9', padding: 10 },
-    relatedImage: { width: '100%', height: 100, borderRadius: 10 },
-    relatedContentTitle: { fontSize: 16, fontWeight: 'bold', marginTop: 5, color: '#333' },
-    viewContentButton: { marginTop: 5, padding: 10, backgroundColor: '#007bff', borderRadius: 5 },
+    relatedImage: { width: '100%', height: 200, borderRadius: 10 },
+    relatedContentTitle: { fontSize: 14, fontWeight: 'bold', marginTop: 5, color: '#333' },
+    viewContentButton: { marginTop: 5, padding: 10, backgroundColor: '#008080', borderRadius: 5 },
     viewContentButtonText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
 });
 

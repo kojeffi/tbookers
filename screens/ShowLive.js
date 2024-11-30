@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import { WebView } from 'react-native-webview';
-import Navbar from './Navbar'; // Ensure Navbar is correctly implemented
-import api from './api'; // Import your custom API instance
-import { AuthContext } from './AuthContext'; // Import AuthContext
+// import { WebView } from 'react-native-webview';
+import Navbar from './Navbar';
+import api from './api';
+import { AuthContext } from './AuthContext';
 
 const ShowLive = ({ route, navigation }) => {
-  const { liveClassSlug } = route.params; // Assume the class slug is passed via navigation
+  const { liveClassSlug } = route.params;
   const { authToken, userId, profileData, loading: authLoading } = useContext(AuthContext);
   
   const [liveClass, setLiveClass] = useState(null);

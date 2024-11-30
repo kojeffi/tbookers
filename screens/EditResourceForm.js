@@ -1,25 +1,27 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker'; 
 import api from './api'; 
 import { AuthContext } from './AuthContext'; 
 import DropDownPicker from 'react-native-dropdown-picker'; 
 import Navbar from './Navbar';
+import RNPickerSelect from 'react-native-picker-select';
 
 const EditResource = ({ route, navigation }) => {
-    const { resourceId } = route.params; 
+    const { resourceId, resourceDetails } = route.params;
     const { userToken } = useContext(AuthContext); 
-    const [resource, setResource] = useState({});
-    const [itemName, setItemName] = useState('');
-    const [itemCategory, setItemCategory] = useState(null);
-    const [county, setCounty] = useState(null);
-    const [itemPrice, setItemPrice] = useState('');
-    const [contactPhone, setContactPhone] = useState('');
-    const [contactEmail, setContactEmail] = useState('');
-    const [whatsappNumber, setWhatsappNumber] = useState('');
+    const [resource, setResource] = useState(resourceDetails || {});
+    const [itemName, setItemName] = useState(resourceDetails ? resourceDetails.item_name : '');
+    const [itemCategories, setItemCategories] = useState(resourceDetails ? resourceDetails.item_category : []);
+    const [counties, setCounties] = useState(resourceDetails ? resourceDetails.county : []);
+    const [itemPrice, setItemPrice] = useState(resourceDetails ? resourceDetails.item_price.toString() : '');
+    const [contactPhone, setContactPhone] = useState(resourceDetails ? resourceDetails.contact_phone.toString() : '');
+    const [contactEmail, setContactEmail] = useState(resourceDetails ? resourceDetails.contact_email : '');
+    const [whatsappNumber, setWhatsappNumber] = useState(resourceDetails ? resourceDetails.whatsapp_number.toString() : '');
     const [itemThumbnail, setItemThumbnail] = useState(null);
     const [itemImages, setItemImages] = useState([]);
-    const [loading, setLoading] = useState(false); // Loading state
+    const [loading, setLoading] = useState(false);
+    const [description, setDescription] = useState(resourceDetails ? resourceDetails.description : '');
 
     const categoryOptions = [
         { label: 'Books', value: 'Books' },
@@ -35,49 +37,108 @@ const EditResource = ({ route, navigation }) => {
     const countyOptions = [
         { label: 'Nairobi', value: 'Nairobi' },
         { label: 'Mombasa', value: 'Mombasa' },
-        // Add more counties here as needed
+        { label: 'Kisumu', value: 'Kisumu' },
+        { label: 'Nakuru', value: 'Nakuru' },
+        { label: 'Eldoret', value: 'Eldoret' },
+        { label: 'Meru', value: 'Meru' },
+        { label: 'Nyeri', value: 'Nyeri' },
+        { label: 'Kakamega', value: 'Kakamega' },
+        { label: 'Kericho', value: 'Kericho' },
+        { label: 'Kitui', value: 'Kitui' },
+        { label: 'Kilifi', value: 'Kilifi' },
+        { label: 'Bomet', value: 'Bomet' },
+        { label: 'Laikipia', value: 'Laikipia' },
+        { label: 'Bungoma', value: 'Bungoma' },
+        { label: 'Busia', value: 'Busia' },
+        { label: 'Trans-Nzoia', value: 'Trans-Nzoia' },
+        { label: 'Narok', value: 'Narok' },
+        { label: 'Kajiado', value: 'Kajiado' },
+        { label: 'Nyamira', value: 'Nyamira' },
+        { label: 'Homa Bay', value: 'Homa Bay' },
+        { label: 'Migori', value: 'Migori' },
+        { label: 'Siaya', value: 'Siaya' },
+        { label: 'Isiolo', value: 'Isiolo' },
+        { label: 'Samburu', value: 'Samburu' },
+        { label: 'Tharaka-Nithi', value: 'Tharaka-Nithi' },
+        { label: 'Embu', value: 'Embu' },
+        { label: 'Meru', value: 'Meru' },
+        { label: 'West Pokot', value: 'West Pokot' },
+        { label: 'Turkana', value: 'Turkana' },
+        { label: 'Marsabit', value: 'Marsabit' },
+        { label: 'Lamu', value: 'Lamu' },
+        { label: 'Tana River', value: 'Tana River' },
+        { label: 'Garissa', value: 'Garissa' },
+        { label: 'Wajir', value: 'Wajir' },
+        { label: 'Mandera', value: 'Mandera' },
+        { label: 'Nairobi City', value: 'Nairobi City' },
+        { label: 'Uasin Gishu', value: 'Uasin Gishu' },
+        { label: 'Nyandarua', value: 'Nyandarua' },
+        { label: 'Nandi', value: 'Nandi' },
+        { label: 'Kericho', value: 'Kericho' },
+        { label: 'Kiambu', value: 'Kiambu' },
+        { label: 'Murang\'a', value: 'Murang\'a' },
+        { label: 'Vihiga', value: 'Vihiga' },
+        { label: 'Lamu', value: 'Lamu' },
+        { label: 'Taita Taveta', value: 'Taita Taveta' },
+        { label: 'Kilifi', value: 'Kilifi' },
     ];
 
     useEffect(() => {
-        const fetchResource = async () => {
-            setLoading(true);
-            try {
-                const response = await api.get(`/learning-resources/${resourceId}`, {
-                    headers: {
-                        Authorization: `Bearer ${userToken}`,
-                    },
-                });
-                const data = response.data;
-                setResource(data);
-                // Populate form fields with existing resource data
-                setItemName(data.item_name);
-                setItemCategory(data.item_category);
-                setCounty(data.county);
-                setItemPrice(data.item_price.toString());
-                setContactPhone(data.contact_phone.toString());
-                setContactEmail(data.contact_email);
-                setWhatsappNumber(data.whatsapp_number.toString());
-            } catch (error) {
-                console.error(error);
-                Alert.alert('Error fetching resource data');
-            } finally {
-                setLoading(false); // Stop loading
-            }
-        };
+        if (!resourceDetails) {
+            const fetchResource = async () => {
+                setLoading(true);
+                try {
+                    const response = await api.get(`/learning-resources/${resourceId}`, {
+                        headers: {
+                            Authorization: `Bearer ${authToken}`,
+                        },
+                    });
+                    const data = response.data;
+                    setResource(data);
+                    setItemName(data.item_name);
+                    setItemCategories(data.item_category);
+                    setCounties(data.county);
+                    setItemPrice(data.item_price.toString());
+                    setContactPhone(data.contact_phone.toString());
+                    setContactEmail(data.contact_email);
+                    setWhatsappNumber(data.whatsapp_number.toString());
+                    setDescription(data.description || '');
+                } catch (error) {
+                    console.error(error);
+                    Alert.alert('Error fetching resource data');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchResource();
+        }
+    }, [resourceId, resourceDetails, userToken]);
 
-        fetchResource();
-    }, [resourceId, userToken]);
+    const validateInputs = () => {
+        if (!itemName || !itemCategories.length || !counties.length || !itemPrice || !contactPhone || !contactEmail) {
+            Alert.alert('Please fill all fields.');
+            return false;
+        }
+        if (isNaN(itemPrice) || isNaN(contactPhone) || isNaN(whatsappNumber)) {
+            Alert.alert('Price and Phone number must be numeric.');
+            return false;
+        }
+        return true;
+    };
 
     const handleUpdate = async () => {
-        setLoading(true); // Start loading during update
+        if (!validateInputs()) return;
+
+        setLoading(true);
         const formData = new FormData();
         formData.append('item_name', itemName);
-        formData.append('item_category', itemCategory);
-        formData.append('county', county);
+        formData.append('item_category', JSON.stringify(itemCategories));
+        formData.append('county', JSON.stringify(counties));
         formData.append('item_price', itemPrice);
         formData.append('contact_phone', contactPhone);
         formData.append('contact_email', contactEmail);
         formData.append('whatsapp_number', whatsappNumber);
+        formData.append('description', description);
 
         if (itemThumbnail) {
             formData.append('item_thumbnail', {
@@ -99,16 +160,21 @@ const EditResource = ({ route, navigation }) => {
             await api.put(`/learning-resources/seller/${resourceId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${userToken}`,
+                    Authorization: `Bearer ${authToken}`,
                 },
             });
             Alert.alert('Resource updated successfully');
-            navigation.goBack(); // Navigate back after successful update
+            navigation.goBack();
         } catch (error) {
-            console.error(error);
-            Alert.alert('Error updating resource');
+            if (error.response) {
+                console.error("Error response data:", error.response.data);
+                Alert.alert('Error updating resource', error.response.data.message || 'Unknown error');
+            } else {
+                console.error(error);
+                Alert.alert('Error updating resource');
+            }
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
     };
 
@@ -133,91 +199,130 @@ const EditResource = ({ route, navigation }) => {
         });
 
         if (!result.cancelled) {
-            setItemImages(result.selected || [result]); // Handle single or multiple images
+            setItemImages(result.selected || [result]);
         }
     };
 
     return (
-        <ScrollView style={{ padding: 16 }}>
-            <View>
-                <Navbar />
-            </View>
-            <Text style={{ fontSize: 24, marginBottom: 16 }}>Edit Resource</Text>
-            {loading && <ActivityIndicator size="large" color="#0000ff" />}
+        <View style={styles.container}>
+            <Navbar />
+            <ScrollView contentContainerStyle={styles.contentContainer}>
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Sell on Tbooke</Text>
+                    <ScrollView style={styles.scrollableCardContent}>
+                        <View style={styles.formGroup}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Item Name"
+                                value={itemName}
+                                onChangeText={setItemName}
+                            />
 
-            <Text>Item Name</Text>
-            <TextInput
-                style={{ borderWidth: 1, marginBottom: 16 }}
-                placeholder="Item Name"
-                value={itemName}
-                onChangeText={setItemName}
-            />
+                            <RNPickerSelect
+                                placeholder={{ label: 'Select category', value: null }}
+                                items={categoryOptions}
+                                onValueChange={setItemCategories}
+                                value={itemCategories}
+                                style={pickerSelectStyles}
+                            />
 
-            <Text>Item Category</Text>
-            <DropDownPicker
-                items={categoryOptions}
-                defaultValue={itemCategory}
-                containerStyle={{ height: 40, marginBottom: 16 }}
-                onChangeItem={(item) => setItemCategory(item.value)}
-                placeholder="Select category"
-            />
+                            <RNPickerSelect
+                                placeholder={{ label: 'Select county', value: null }}
+                                items={countyOptions}
+                                onValueChange={setCounties}
+                                value={counties}
+                                style={pickerSelectStyles}
+                            />
 
-            <Text>County</Text>
-            <DropDownPicker
-                items={countyOptions}
-                defaultValue={county}
-                containerStyle={{ height: 40, marginBottom: 16 }}
-                onChangeItem={(item) => setCounty(item.value)}
-                placeholder="Select county"
-            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Item Price"
+                                keyboardType="numeric"
+                                value={itemPrice}
+                                onChangeText={setItemPrice}
+                            />
 
-            <Text>Item Price</Text>
-            <TextInput
-                style={{ borderWidth: 1, marginBottom: 16 }}
-                placeholder="Item Price"
-                value={itemPrice}
-                onChangeText={setItemPrice}
-                keyboardType="numeric"
-            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Whatsapp Number"
+                                keyboardType="phone-pad"
+                                value={whatsappNumber}
+                                onChangeText={setWhatsappNumber}
+                            />
 
-            <Text>Contact Phone</Text>
-            <TextInput
-                style={{ borderWidth: 1, marginBottom: 16 }}
-                placeholder="Contact Phone"
-                value={contactPhone}
-                onChangeText={setContactPhone}
-                keyboardType="numeric"
-            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Contact Email"
+                                keyboardType="email-address"
+                                value={contactEmail}
+                                onChangeText={setContactEmail}
+                            />
 
-            <Text>Contact Email</Text>
-            <TextInput
-                style={{ borderWidth: 1, marginBottom: 16 }}
-                placeholder="Contact Email"
-                value={contactEmail}
-                onChangeText={setContactEmail}
-                keyboardType="email-address"
-            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Contact Phone"
+                                keyboardType="phone-pad"
+                                value={contactPhone}
+                                onChangeText={setContactPhone}
+                            />
 
-            <Text>WhatsApp Number</Text>
-            <TextInput
-                style={{ borderWidth: 1, marginBottom: 16 }}
-                placeholder="WhatsApp Number"
-                value={whatsappNumber}
-                onChangeText={setWhatsappNumber}
-                keyboardType="numeric"
-            />
+                            <TouchableOpacity style={styles.imagePicker} onPress={pickThumbnail}>
+                                <Text style={styles.imagePickerText}>
+                                    {itemThumbnail ? 'Change Thumbnail Image' : 'Pick Thumbnail Image'}
+                                </Text>
+                            </TouchableOpacity>
+                            {itemThumbnail && <Image source={{ uri: itemThumbnail.uri }} style={styles.imagePreview} />}
 
-            <Button title="Update Thumbnail" onPress={pickThumbnail} />
-            {itemThumbnail && <Text>{itemThumbnail.uri}</Text>}
+                            <TouchableOpacity style={styles.imagePicker} onPress={pickImages}>
+                                <Text style={styles.imagePickerText}>
+                                    {itemImages.length > 0 ? 'Change Item Images' : 'Pick Item Images'}
+                                </Text>
+                            </TouchableOpacity>
+                            {itemImages.length > 0 && (
+                                <ScrollView horizontal style={styles.imagesPreviewContainer}>
+                                    {itemImages.map((img, index) => (
+                                        <Image key={index} source={{ uri: img.uri }} style={styles.imagePreview} />
+                                    ))}
+                                </ScrollView>
+                            )}
 
-            <Button title="Select Item Images" onPress={pickImages} />
-            {itemImages.map((image, index) => (
-                <Text key={index}>{image.uri}</Text>
-            ))}
+                            <TextInput
+                                style={[styles.input, { height: 100 }]}
+                                placeholder="Description"
+                                multiline
+                                value={description}
+                                onChangeText={setDescription}
+                            />
 
-            <Button title="Update Resource" onPress={handleUpdate} disabled={loading} />
-        </ScrollView>
+                            <TouchableOpacity style={styles.submitButton} onPress={handleUpdate}>
+                                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Update Resource</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </View>
+            </ScrollView>
+        </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F5F5F5' },
+    contentContainer: { alignItems: 'center', padding: 20 },
+    card: { backgroundColor: '#FFF', borderRadius: 10, padding: 20, width: '100%', elevation: 3 },
+    cardTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 20 },
+    formGroup: { marginBottom: 15 },
+    input: { borderWidth: 1, borderColor: '#DDD', padding: 10, borderRadius: 5, marginBottom: 10, fontSize: 16 },
+    submitButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 5, alignItems: 'center' },
+    submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+    imagePicker: { alignItems: 'center', padding: 10, backgroundColor: '#DDD', borderRadius: 5, marginVertical: 10 },
+    imagePickerText: { color: '#333', fontSize: 16 },
+    imagePreview: { width: 100, height: 100, marginRight: 10, borderRadius: 5 },
+    imagesPreviewContainer: { flexDirection: 'row', marginTop: 10 },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+    inputIOS: { fontSize: 16, paddingVertical: 12, paddingHorizontal: 10, borderWidth: 1, borderColor: '#DDD', borderRadius: 4, color: '#333', marginBottom: 10 },
+    inputAndroid: { fontSize: 16, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: '#DDD', borderRadius: 4, color: '#333', marginBottom: 10 },
+});
 
 export default EditResource;

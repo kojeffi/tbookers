@@ -1,99 +1,123 @@
-import React, { useEffect, useContext, useState } from 'react'; 
-import { View, Text, Button, FlatList, Alert, StyleSheet } from 'react-native';
-import api from './api'; // Adjust the import based on your project structure
+import React, { useEffect, useState, useContext } from 'react';
+import { View, Text, Button, FlatList, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { AuthContext } from './AuthContext';
+import api from './api';
 import Navbar from './Navbar';
 
 const MyContent = ({ navigation }) => {
-    const { authToken, profileData } = useContext(AuthContext); // Assuming profileData is available in AuthContext
+    const { authToken, profileData } = useContext(AuthContext);
     const [contents, setContents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchContents();
-    }, []);
+        if (authToken) {
+            fetchContents();
+        } else {
+            setLoading(false);
+            setError('You need to log in to view your content.');
+        }
+    }, [authToken]);
 
     const fetchContents = async () => {
         try {
-            const response = await api.get('/tbooke-learning'); // Fetch all Tbooke Learning contents
+            const response = await api.get('/tbooke-learning', {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
 
-            // Log the response to see its structure
-            console.log("API Response:", response);
+            const userId = profileData?.user?.id || profileData?.profileDetails?.id;
 
-            // Check if response.data is an array
-            if (Array.isArray(response.data)) {
-                // Filter contents to include only those created by the logged-in user
-                const userContents = response.data.filter(content => content.user?.id === profileData?.user?.id);
+            if (userId) {
+                const userContents = response.data.contents.filter(
+                    content => content.user_id.toString() === userId.toString()
+                );
                 setContents(userContents);
             } else {
-                setError('No contents found or the data structure is incorrect.');
+                setContents([]);
             }
-        } catch (err) {
-            console.error(err);
+        } catch (e) {
+            console.error('Failed to fetch contents', e);
             setError('Failed to load contents');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = (content) => {
+    const handleDelete = async (content) => {
         Alert.alert(
-            'Delete Confirmation',
-            'Are you sure you want to delete this content?',
+            "Confirm Delete",
+            "Are you sure you want to delete this content?",
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: "Cancel", style: "cancel" },
                 {
-                    text: 'Delete',
+                    text: "Delete",
                     onPress: async () => {
                         try {
-                            await api.delete(`/tbooke-learning/${content.slug}`); // Use the slug for deletion
-                            fetchContents(); // Refresh the list after deletion
-                        } catch (err) {
-                            console.error(err);
-                            setError('Failed to delete content');
+                            await api.delete(`/tbooke-learning/${content.slug}`, {
+                                headers: { Authorization: `Bearer ${authToken}` }
+                            });
+                            fetchContents(); // Refresh the list
+                        } catch (e) {
+                            console.error('Failed to delete content', e);
+                            Alert.alert('Error', 'Failed to delete content');
                         }
-                    },
-                },
-            ],
-            { cancelable: false }
+                    }
+                }
+            ]
         );
     };
 
+    const handleEditContent = (contentId) => {
+        navigation.navigate('EditContent', { contentId });
+    };
+    
+
+    const handleCreateContent = () => {
+        navigation.navigate('CreateContent');
+    };
+
     if (loading) {
-        return <Text>Loading...</Text>;
+        return <Text style={styles.loadingText}>Loading...</Text>;
     }
 
     if (error) {
-        return <Text>{error}</Text>;
+        return <Text style={styles.errorText}>{error}</Text>;
     }
 
     return (
         <View style={styles.container}>
-            <Navbar navigation={navigation} />
-            
-            <Text style={styles.header}>My Content</Text>
+            <Navbar /> 
+            <Text style={styles.title}>My Content</Text>
+            <TouchableOpacity style={styles.createButton} onPress={handleCreateContent}>
+                <Text style={styles.createButtonText}>Create New Content</Text>
+            </TouchableOpacity>
             <FlatList
                 data={contents}
-                keyExtractor={(item) => item.slug} // Use slug for key extractor
+                keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
-                    <View style={styles.contentItem}>
-                        <Text style={styles.title}>{item.content_title}</Text>
-                        <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                    <View style={styles.card}>
+                        <TouchableOpacity onPress={() => navigation.navigate('ContentDetail', { slug: item.slug })}>
+                            <Text style={styles.contentTitle}>{item.content_title}</Text>
+                            <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                        </TouchableOpacity>
                         <View style={styles.actions}>
-                            <Button
-                                title="Edit"
-                                onPress={() => navigation.navigate('EditContent', { slug: item.slug })} // Navigate to edit screen with slug
-                                color="#FFA500" // orange color for edit
-                            />
-                            <Button
-                                title="Delete"
-                                onPress={() => handleDelete(item)}
-                                color="#FF0000" // red color for delete
-                            />
+
+                        <TouchableOpacity 
+                        style={styles.editButton} 
+                        onPress={() => navigation.navigate('EditContent', { contentId: item.slug, contentDetails: item })}>
+                        <Text style={styles.buttonText}>Edit</Text>
+                    </TouchableOpacity>
+                        {/* <TouchableOpacity style={styles.editButton} onPress={() => handleEditContent(item.slug)}>
+                         <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity> */}
+
+                        <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item)}>
+                          <Text style={styles.deleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
                         </View>
                     </View>
                 )}
+                ListEmptyComponent={<Text style={styles.emptyText}>No content found. Please create new content.</Text>}
             />
         </View>
     );
@@ -102,32 +126,97 @@ const MyContent = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
-        backgroundColor: '#ffffff',
-    },
-    header: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    contentItem: {
-        marginBottom: 15,
         padding: 10,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 5,
+        backgroundColor: '#f8f9fa',
     },
     title: {
         fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        textAlign: 'center',
+        color: '#343a40',
+    },
+    createButton: {
+        backgroundColor: '#008080',
+        padding: 10,
+        borderRadius: 5,
+        marginBottom: 16,
+        alignItems: 'center',
+    },
+    createButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    card: {
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#ced4da',
+        borderRadius: 8,
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3, // for Android shadow
+    },
+    contentTitle: {
+        fontSize: 16,
+        color: '#007bff',
+        marginBottom: 4,
     },
     date: {
         fontSize: 14,
-        color: '#777',
+        color: '#6c757d',
+        marginBottom: 8,
     },
     actions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 10,
+        marginTop: 12,
+    },
+    editButton: {
+        backgroundColor: 'orange',
+        padding: 10,
+        borderRadius: 5,
+        width: '48%', // Adjust width for spacing
+        alignItems: 'center',
+    },
+    editButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    deleteButton: {
+        backgroundColor: 'red',
+        padding: 10,
+        borderRadius: 5,
+        width: '48%', // Adjust width for spacing
+        alignItems: 'center',
+    },
+    deleteButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    loadingText: {
+        textAlign: 'center',
+        fontSize: 14,
+        marginTop: 20,
+    },
+    errorText: {
+        textAlign: 'center',
+        fontSize: 14,
+        color: 'red',
+        marginTop: 20,
+    },
+    emptyText: {
+        textAlign: 'center',
+        fontSize: 14,
+        color: '#6c757d',
+        marginTop: 20,
     },
 });
 

@@ -1,217 +1,157 @@
-import React, { useContext, useState } from 'react'; 
-import { View, Text, Button, ScrollView, TouchableOpacity, Modal, StyleSheet, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState, useContext } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { Avatar, Badge } from 'react-native-elements';
-import Navbar from './Navbar'; // Adjust the path based on your file structure
-import api from './api'; // Import your API setup with Axios
-import { AuthContext } from './AuthContext'; // Import AuthContext for token management
-import { useRoute } from '@react-navigation/native';
+import { AuthContext } from './AuthContext';
+import api from './api';
+import Navbar from './Navbar';
 
+const OwnProfile = ({ route, navigation }) => {
+    const { postUser } = route.params;
+    const { authToken, profileData } = useContext(AuthContext); // Get authToken and profileData from AuthContext
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followersCount, setFollowersCount] = useState(postUser.followersCount || 0);
 
-const OwnProfile = () => {
-    const navigation = useNavigation();
-    const { profileData, loading, error, notificationCount, user } = useContext(AuthContext);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [showRepostSuccessModal, setShowRepostSuccessModal] = useState(false);
-    const [isFollowing, setIsFollowing] = useState(false); // Track follow status
-    const route = useRoute();
-    const userId = route.params?.userId; // Get user ID from navigation params
-    const [userProfile, setUserProfile] = useState(null);
-    
+    // Effect hook to check if the user is following initially
+    useEffect(() => {
+        const checkIfFollowing = async () => {
+            try {
+                const response = await api.get(`/profile/${postUser.username}`, {
+                    headers: {
+                        Authorization: `Bearer ${authToken}` // Pass the token for authentication
+                    }
+                });
+                setIsFollowing(response.data.isFollowing); // Assuming "isFollowing" is in the response
+            } catch (error) {
+                console.error("Failed to fetch follow status:", error);
+            }
+        };
+        checkIfFollowing();
+    }, [postUser, authToken]);
 
-    // Navigate to another user's profile
-    const navigateToProfile = (user) => {
-        if (user && user.id) {
-            navigation.navigate('OwnProfile', { userId: user.id });
-        } else {
-            console.warn('Unable to navigate to profile: Invalid user data');
-        }
-    };
-
-    // Handle liking a post
-    const handleLike = async (postId) => {
-        try {
-            await api.post(`/posts/${postId}/like`);
-            setShowSuccessModal(true);
-        } catch (err) {
-            console.error("Error liking post:", err);
-        }
-    };
-
-    // Follow/Unfollow functionality
+    // Follow or Unfollow handler
     const handleFollowToggle = async () => {
         try {
-            if (isFollowing) {
-                await api.post(`/unfollow/${user.id}`); // Adjust API endpoint
+            const action = isFollowing ? 'unfollow' : 'follow';
+            const url = `/users/${postUser.id}/${action}`;
+            console.log("Attempting to call:", url); // Log the URL for debugging
+            
+            const response = await api.post(url, {}, {
+                headers: {
+                    Authorization: `Bearer ${authToken}` // Include authToken in headers
+                }
+            });
+     
+            if (response.status === 200) {
+                setIsFollowing(!isFollowing);
+                setFollowersCount(prevCount => prevCount + (isFollowing ? -1 : 1));
             } else {
-                await api.post(`/follow/${user.id}`); // Adjust API endpoint
+                console.error("Failed to toggle follow status, server response:", response);
+                alert("Failed to toggle follow status. Please try again.");
             }
-            setIsFollowing(!isFollowing);
-        } catch (err) {
-            console.error("Error following/unfollowing:", err);
+        } catch (error) {
+            console.error("An error occurred while toggling follow status:", error.message);
+            if (error.response) {
+                console.error("Error response:", error.response.data); // Log the response data
+                alert(`Error: ${error.response.data.message || 'An unknown error occurred.'}`);
+            } else {
+                alert("An error occurred. Please try again.");
+            }
         }
     };
-
-    // Handle commenting on a post
-    const handleComment = (postId) => {
-        navigation.navigate('CommentScreen', { postId });
-    };
-
-    // Handle reposting a post
-    const handleRepost = async (postId) => {
-        try {
-            await api.post(`/posts/${postId}/repost`);
-            setShowRepostSuccessModal(true);
-        } catch (err) {
-            console.error("Error reposting:", err);
-        }
-    };
-
-    if (loading) {
-        return <ActivityIndicator size="large" color="#008080" style={styles.loadingIndicator} />;
+    
+    
+    if (!postUser) {
+        return <Text>No user details available.</Text>;
     }
 
-    if (error) {
-        return <Text style={styles.errorText}>Error: {error}</Text>;
-    }
-
-    if (!profileData) {
-        return <Text>No profile data available</Text>;
-    }
-
-    const { user: postUser, posts, profileDetails, followersCount } = profileData;
+    const { first_name, surname, profile_picture, profile_type, about, user_subjects, favorite_topics, socials, institution_name, institutionDetails } = postUser;
+    const profileImageUri = profile_picture ? `https://tbooke.net/storage/${profile_picture}` : require('./../assets/images/avatar.png');
 
     return (
         <View style={styles.container}>
-            <Navbar navigation={navigation} notificationCount={notificationCount} />
-            <ScrollView style={styles.scrollContainer}>
-                {/* Profile Details */}
-                <View style={styles.profileContainer}>
-                    <Avatar
-                        rounded
-                        size="large"
-                        source={{ uri: postUser?.profile_picture ? `https://tbooke.net/storage/${postUser.profile_picture}` : require('./../assets/images/avatar.png') }}
-                        containerStyle={styles.avatar}
-                    />
-                    <Text style={styles.profileName}>
-                        {postUser.profile_type === 'institution' && profileDetails?.institution_name
-                            ? profileDetails.institution_name
-                            : `${postUser.first_name} ${postUser.surname}`}
-                    </Text>
-                    <Text style={styles.profileType}>{postUser.profile_type}</Text>
-                    <Text style={styles.followersCount}>Connections: {followersCount}</Text>
-                </View>
-
-                <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile', { profileData })}>
-                    <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
-
-                {/* Follow/Unfollow Button */}
-                <TouchableOpacity 
-                    style={[styles.actionButton, isFollowing ? styles.unfollowButton : styles.followButton]}
-                    onPress={handleFollowToggle}
-                >
-                    <Text style={styles.actionText}>{isFollowing ? 'Remove Connection' : 'Connect'}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.messageButton} onPress={() => navigation.navigate('Messages', { username: postUser.username })}>
-                    <Text style={styles.actionText}>Message</Text>
-                </TouchableOpacity>
-
-                {/* About Me */}
+            <Navbar />
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>About Me</Text>
-                    <Text>{profileDetails?.about || "You haven't added about you."}</Text>
-                </View>
-
-                {/* My Subjects */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>My Subjects</Text>
-                    <View style={styles.subjectLinks}>
-                        {profileDetails?.user_subjects?.split(',').map((subject, index) => (
-                            <Badge key={index} value={subject.trim()} badgeStyle={styles.badge} textStyle={styles.badgeText} />
-                        )) || <Text>You haven't added any subjects.</Text>}
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Profile Details</Text>
                     </View>
-                </View>
+                    <View style={styles.cardBody}>
+                        <Avatar
+                            rounded
+                            size="xlarge"
+                            source={typeof profileImageUri === 'string' ? { uri: profileImageUri } : profileImageUri}
+                            containerStyle={styles.avatar}
+                        />
+                        <Text style={styles.profileName}>
+                            {profile_type === 'institution' && institution_name ? institution_name : `${first_name} ${surname}`}
+                        </Text>
+                        <Text style={styles.profileType}>{profile_type}</Text>
+                        <Text style={styles.followersCount}>Connections: {followersCount}</Text>
 
-                {/* Favorite Topics */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Favorite Topics</Text>
-                    <View style={styles.favoriteTopicLinks}>
-                        {profileDetails?.favorite_topics?.split(',').map((topic, index) => (
-                            <Badge key={index} value={topic.trim()} badgeStyle={styles.badge} textStyle={styles.badgeText} />
-                        )) || <Text>You haven't added any favorite topics.</Text>}
-                    </View>
-                </View>
-
-                {/* Activities */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Activities</Text>
-                    {posts.length === 0 ? (
-                        <Text style={styles.noActivitiesText}>You do not have any activities.</Text>
-                    ) : (
-                        posts.map((post, index) => (
-                            <View key={index} style={styles.postBox}>
-                                <Avatar
-                                    rounded
-                                    size="small"
-                                    source={{ uri: postUser?.profile_picture ? `https://tbooke.net/storage/${postUser.profile_picture}` : require('./../assets/images/avatar.png') }}
-                                    containerStyle={styles.avatar}
-                                />
-                                <View style={styles.postContent}>
-                                    <Text style={styles.postUserName} onPress={() => navigateToProfile(post.user)}>
-                                        {post.user?.first_name} {post.user?.surname}
-                                    </Text>
-                                    <Text style={styles.postText}>{post.content}</Text>
-                                    <View style={styles.mediaContainer}>
-                                        {/* Render media based on type */}
-                                    </View>
-                                    {/* Like, Comment, and Repost Buttons */}
-                                    <View style={styles.actions}>
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id)}>
-                                            <Text style={styles.actionText}>Like</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => handleComment(post.id)}>
-                                            <Text style={styles.actionText}>Comment</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.actionButton} onPress={() => handleRepost(post.id)}>
-                                            <Text style={styles.actionText}>Repost</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </View>
-                        ))
-                    )}
-                </View>
-
-                {/* Success Modals */}
-                <Modal
-                    transparent={true}
-                    visible={showSuccessModal}
-                    onRequestClose={() => setShowSuccessModal(false)}
-                    animationType="slide"
-                >
-                    <View style={styles.modalBackground}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Post created successfully</Text>
-                            <Button title="Close" onPress={() => setShowSuccessModal(false)} />
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity 
+                                style={styles.followButton}
+                                onPress={handleFollowToggle}>
+                                <Text style={styles.buttonText}>
+                                    {isFollowing ? 'Remove Connection' : 'Connect'}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.messageButton} 
+                                onPress={() => navigation.navigate('Messages', { username: postUser.username })}>
+                                <Text style={styles.buttonText}>Message</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                </Modal>
 
-                <Modal
-                    transparent={true}
-                    visible={showRepostSuccessModal}
-                    onRequestClose={() => setShowRepostSuccessModal(false)}
-                    animationType="slide"
-                >
-                    <View style={styles.modalBackground}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Repost successful</Text>
-                            <Button title="Close" onPress={() => setShowRepostSuccessModal(false)} />
+                    <View style={styles.cardBody}>
+                        <Text style={styles.cardSubTitle}>About</Text>
+                        <Text style={styles.aboutText}>
+                            {about || (institutionDetails && institutionDetails.institution_about) || 'No about given.'}
+                        </Text>
+                    </View>
+
+                    <View style={styles.cardBody}>
+                        <Text style={styles.cardSubTitle}>Subjects</Text>
+                        <View style={styles.subjectLinks}>
+                            {user_subjects ? (
+                                user_subjects.split(',').map((subject, index) => (
+                                    <Badge key={index} value={<Text style={styles.badgeText}>{subject.trim()}</Text>} badgeStyle={styles.badge} />
+                                ))
+                            ) : (
+                                <Text>No Subjects added.</Text>
+                            )}
                         </View>
                     </View>
-                </Modal>
+
+                    <View style={styles.cardBody}>
+                        <Text style={styles.cardSubTitle}>Favorite Topics</Text>
+                        <View style={styles.favoriteTopicLinks}>
+                            {favorite_topics ? (
+                                favorite_topics.split(',').map((topic, index) => (
+                                    <Badge key={index} value={<Text style={styles.badgeText}>{topic.trim()}</Text>} badgeStyle={styles.badge} />
+                                ))
+                            ) : (
+                                <Text>No topics added.</Text>
+                            )}
+                        </View>
+                    </View>
+
+                    <View style={styles.cardBody}>
+                        <Text style={styles.cardSubTitle}>Find me on</Text>
+                        <View style={styles.socialLinks}>
+                            {socials ? (
+                                Object.entries(socials).map(([platform, link], index) => (
+                                    <TouchableOpacity key={index} onPress={() => Linking.openURL(link)}>
+                                        <Text style={styles.socialLink}>{platform.charAt(0).toUpperCase() + platform.slice(1)}</Text>
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <Text>No social media profiles found.</Text>
+                            )}
+                        </View>
+                    </View>
+                </View>
             </ScrollView>
         </View>
     );
@@ -220,153 +160,127 @@ const OwnProfile = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
-        justifyContent: 'flex-start',
+        backgroundColor: '#f4f6f9',
     },
     scrollContainer: {
-        flex: 1,
+        paddingBottom: 20,
     },
-    profileContainer: {
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#ffffff',
+    card: {
+        backgroundColor: '#f4f4f4',
+        borderRadius: 10,
+        marginVertical: 12,
+        padding: 20,
+        elevation: 4,
+        shadowColor: '#000000',
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    cardHeader: {
         borderBottomWidth: 1,
-        borderBottomColor: '#eaeaea',
+        borderBottomColor: '#e2e2e2',
+        paddingBottom: 10,
+        marginBottom: 15,
     },
-    avatar: {
-        marginBottom: 8,
-        borderWidth: 2,
-        borderColor: '#008080',
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        textAlign:'center',
+    },
+    cardBody: {
+        marginBottom: 20,
     },
     profileName: {
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 4,
+        color: '#333',
+        marginTop: 10,
+        textAlign:'center',
     },
     profileType: {
-        fontSize: 16,
-        color: '#666',
+        fontSize: 14,
+        color: '#6c757d',
+        marginTop: 5,
+        textAlign:'center',
     },
     followersCount: {
         fontSize: 14,
-        color: '#666',
-        marginBottom: 12,
-    },
-    editButton: {
-        backgroundColor: '#008080',
-        padding: 10,
-        borderRadius: 5,
+        color: '#6c757d',
         marginVertical: 10,
+        textAlign:'center',
     },
-    editButtonText: {
-        color: '#ffffff',
-        fontWeight: 'bold',
-    },
-    actionButton: {
-        padding: 10,
-        borderRadius: 5,
-        marginVertical: 5,
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 12,
     },
     followButton: {
-        backgroundColor: '#008080',
-    },
-    unfollowButton: {
-        backgroundColor: '#ff4d4d',
-    },
-    actionText: {
-        color: '#ffffff',
-        textAlign: 'center',
+        backgroundColor: '#1E90FF',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+        width: '48%',
+        alignItems: 'center',
     },
     messageButton: {
-        backgroundColor: '#6c757d',
-        padding: 10,
-        borderRadius: 5,
-        marginVertical: 10,
+        backgroundColor: '#28a745',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+        width: '48%',
+        alignItems: 'center',
     },
-    card: {
-        backgroundColor: '#ffffff',
-        padding: 16,
-        marginBottom: 10,
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#eaeaea',
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 8,
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
     },
     subjectLinks: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        marginTop: 10,
     },
     favoriteTopicLinks: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        marginTop: 10,
     },
-    badge: {
-        backgroundColor: '#008080',
-        margin: 4,
+    socialLinks: {
+        marginTop: 10,
     },
-    badgeText: {
-        color: '#ffffff',
-    },
-    noActivitiesText: {
-        textAlign: 'center',
-        color: '#666',
-    },
-    postBox: {
-        flexDirection: 'row',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eaeaea',
-    },
-    postContent: {
-        flex: 1,
-        marginLeft: 10,
-    },
-    postUserName: {
-        fontWeight: 'bold',
-        color: '#008080',
-        marginBottom: 4,
-    },
-    postText: {
-        fontSize: 16,
-        marginBottom: 4,
-    },
-    mediaContainer: {
+    socialLink: {
+        color: '#007bff',
+        fontSize: 14,
+        textDecorationLine: 'underline',
         marginBottom: 8,
     },
-    actions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    loadingIndicator: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    modalBackground: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        width: 300,
-        padding: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    modalTitle: {
-        fontSize: 18,
+    cardSubTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
         marginBottom: 10,
-        fontWeight: 'bold',
     },
-    errorText: {
-        color: 'red',
-        textAlign: 'center',
+    badge: {
+        backgroundColor: '#007bff',
+        margin: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 20,
     },
+    badgeText: {
+        color: '#fff',
+        fontSize: 14,
+    },
+    aboutText: {
+        fontSize: 16,
+        color: '#333',
+        lineHeight: 22,
+    },
+    avatar: {
+        alignSelf: 'center',
+        marginVertical: 20,
+    }
+    
 });
 
 export default OwnProfile;

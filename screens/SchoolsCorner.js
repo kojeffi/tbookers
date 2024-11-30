@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Navbar from './Navbar';
 import api from './api';
 import { AuthContext } from './AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import Navbar from './Navbar';
+
+
 
 const SchoolsCorner = () => {
   const [schools, setSchools] = useState([]);
@@ -61,25 +63,33 @@ const SchoolsCorner = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerContainer}>
           <Text style={styles.headerText}>Schools Corner</Text>
-          <TouchableOpacity style={styles.addSchoolButton} onPress={() => navigation.navigate('AddSchool')}>
-            <Text style={styles.addSchoolButtonText}>Add Your School</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.addSchoolButton} onPress={() => navigation.navigate('AddSchool')}>
+              <Text style={styles.addSchoolButtonText}>Add School</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.addSchoolButton, styles.mySchoolsButton]} 
+              onPress={() => navigation.navigate('MySchools', { username: authToken.username })}>
+              <Text style={styles.addSchoolButtonText}>My Schools</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {schools.map((school) => (
           <View key={school.id} style={styles.schoolCard}>
             <Image
-              source={{ uri: `http://192.168.12.117:8000/api/storage/${school.thumbnail}` }}
+              source={{ uri: `https://tbooke.net/storage/${school.thumbnail}` }}
               style={styles.schoolImage}
             />
-            <View style={styles.schoolContent}>
+            <View style={styles.schoolHeader}>
               <Text style={styles.schoolName}>{school.name}</Text>
+            </View>
+            <View style={styles.schoolBody}>
               <Text style={styles.schoolDescription}>{school.description.slice(0, 100)}...</Text>
               <TouchableOpacity
                 style={styles.learnMoreButton}
                 onPress={() => navigation.navigate('SchoolDetails', { slug: school.slug })}
               >
-                <Ionicons name="information-circle" size={24} color="#fff" />
                 <Text style={styles.learnMoreButtonText}>Learn More</Text>
               </TouchableOpacity>
             </View>
@@ -107,31 +117,39 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: 'red',
-    fontSize: 18,
+    fontSize: 16,
   },
   content: {
     padding: 16,
     alignItems: 'center',
   },
   headerContainer: {
-    alignItems: 'center',
     marginBottom: 16,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   addSchoolButton: {
     backgroundColor: '#007BFF',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 15,
+    marginHorizontal: 5,
+  },
+  mySchoolsButton: {
+    backgroundColor: '#6c757d',
   },
   addSchoolButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   schoolCard: {
@@ -140,38 +158,40 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 16,
     overflow: 'hidden',
-    width: '100%',
+    width: '100%', // Each card takes full width
   },
   schoolImage: {
     width: '100%',
-    height: 150,
+    height: 200,
     resizeMode: 'cover',
   },
-  schoolContent: {
+  schoolHeader: {
     padding: 16,
   },
   schoolName: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 3,
+  },
+  schoolBody: {
+    padding: 16,
   },
   schoolDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555',
     marginBottom: 8,
   },
   learnMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center', // Center the content horizontally
     backgroundColor: '#008080',
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   learnMoreButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
   },
 });
 

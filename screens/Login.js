@@ -79,7 +79,7 @@ const Login = ({ navigation }) => {
             onPress={() => setShowPassword(!showPassword)} // Toggle the showPassword state
             style={styles.eyeIcon}
           >
-            <Icon name={showPassword ? 'eye' : 'eye-slash'} size={20} color="#555" />
+            <Icon name={showPassword ? 'eye' : 'eye-slash'} size={20} color="#008080" />
           </TouchableOpacity>
         </View>
         <View style={styles.checkboxContainer}>
@@ -88,14 +88,14 @@ const Login = ({ navigation }) => {
             onPress={() => setRememberMe(!rememberMe)}
           >
             <View style={[styles.checkboxInner, rememberMe && styles.checkboxChecked]}>
-              {rememberMe && <Icon name="check" size={16} color="#fff" />}
+              {rememberMe && <Icon name="check" size={16} color="#008080" />}
             </View>
             <Text style={styles.checkboxText}>Remember me</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Icon name="sign-in" size={20} color="#fff" style={styles.loginButtonIcon} />
-          <Text style={styles.loginButtonText}>Submit</Text>
+          <Text style={styles.loginButtonText}>SignIn</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.forgotPassword} onPress={() => navigation.navigate('ForgotPassword')}>
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   welcomeText: {
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 20,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'maroon',
-    padding: 8,
+    padding: 7,
     borderRadius: 5,
   },
   learnMoreIcon: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   loginTitle: {
-    fontSize: 14,
+    fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 8,
     paddingLeft: 15, // Add left padding to avoid overlap with icon
     borderRadius: 5,
     borderColor: '#ccc',
@@ -205,13 +205,13 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 3,
     borderWidth: 2,
-    borderColor: '#007BFF',
+    borderColor: '#008080',
     marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#fff',
   },
   checkboxText: {
     fontSize: 14,
@@ -220,9 +220,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'maroon',
-    padding: 15,
+    padding: 7,
     borderRadius: 5,
     justifyContent: 'center',
+    marginHorizontal: 50,
   },
   loginButtonIcon: {
     marginRight: 8,
@@ -236,8 +237,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   forgotPasswordText: {
-    color: '#007BFF',
-    fontSize: 12,
+    color: '#008080',
+    fontSize: 14,
   },
   signupText: {
     textAlign: 'center',
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: '#007BFF',
+    color: '#008080',
     fontWeight: 'bold',
   },
 });

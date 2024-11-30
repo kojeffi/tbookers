@@ -1,198 +1,275 @@
-import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    Button,
-    FlatList,
-    Modal,
-    TextInput,
-    Image,
-    StyleSheet,
-    TouchableOpacity,
-} from 'react-native';
-import api from './api'; // Ensure this is your API service
+import React, { useContext, useEffect, useState } from 'react';
+import { View, Text, Image, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet } from 'react-native';
+import { AuthContext } from './AuthContext';
+import api from './api';
+import Navbar from './Navbar';
+import Icon from 'react-native-vector-icons/Feather';
+import { useNavigation } from '@react-navigation/native';
 
 const ShowGroup = ({ route }) => {
-    const { slug } = route.params; // Assuming the slug is passed as a route parameter
+    const { slug } = route.params;
+    const { profileData } = useContext(AuthContext);
+    const navigation = useNavigation();
+
     const [group, setGroup] = useState(null);
     const [posts, setPosts] = useState([]);
-    const [isJoined, setIsJoined] = useState(false);
-    const [isModalVisible, setModalVisible] = useState(false);
-    const [postContent, setPostContent] = useState('');
-    const [postMedia, setPostMedia] = useState(null);
+    const [createPostModalVisible, setCreatePostModalVisible] = useState(false);
+    const [newPostContent, setNewPostContent] = useState('');
+    const [newPostMedia, setNewPostMedia] = useState(null);
 
     useEffect(() => {
-        fetchGroup();
-        fetchPosts();
-    }, []);
+        loadGroupDetails();
+    }, [slug]);
 
-    const fetchGroup = async () => {
+    const loadGroupDetails = async () => {
         try {
             const response = await api.get(`/groups/${slug}`);
-            setGroup(response.data);
-            setIsJoined(response.data.isJoined); // Assuming this property indicates membership status
+            setGroup(response.data.group || {});
+            setPosts(response.data.groupPosts || []);
         } catch (error) {
-            console.error('Error fetching group:', error);
-        }
-    };
-
-    const fetchPosts = async () => {
-        try {
-            const response = await api.get(`/groups/${slug}/posts`);
-            setPosts(response.data);
-        } catch (error) {
-            console.error('Error fetching posts:', error);
+            console.error('Failed to load group details', error);
         }
     };
 
     const handleJoinGroup = async () => {
         try {
             await api.post(`/groups/${slug}/join`);
-            setIsJoined(true);
+            loadGroupDetails(); // Reload the group to reflect the new membership status
         } catch (error) {
-            console.error('Error joining group:', error);
-        }
-    };
-
-    const handleLeaveGroup = async () => {
-        try {
-            await api.delete(`/groups/${slug}`);
-            setIsJoined(false);
-        } catch (error) {
-            console.error('Error leaving group:', error);
+            console.error('Failed to join group', error);
         }
     };
 
     const handleCreatePost = async () => {
         const formData = new FormData();
-        formData.append('content', postContent);
-        if (postMedia) {
-            formData.append('media', {
-                uri: postMedia.uri,
-                type: postMedia.type,
-                name: postMedia.fileName,
-            });
-        }
+        formData.append('content', newPostContent);
+        if (newPostMedia) formData.append('media', newPostMedia);
 
         try {
-            await api.post(`/groups/${slug}/posts`, formData);
-            setPostContent('');
-            setPostMedia(null);
-            setModalVisible(false);
-            fetchPosts(); // Refresh posts after creation
+            await api.post(`/groups/${slug}/posts`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            setNewPostContent('');
+            setNewPostMedia(null);
+            setCreatePostModalVisible(false);
+            loadGroupDetails();
         } catch (error) {
-            console.error('Error creating post:', error);
-        }
-    };
-
-    const handleCommentPost = async (postId, comment) => {
-        try {
-            await api.post(`/groups/${slug}/posts/${postId}/comment`, { comment });
-            fetchPosts(); // Refresh posts after commenting
-        } catch (error) {
-            console.error('Error commenting on post:', error);
+            console.error('Failed to create post', error);
         }
     };
 
     const handleLikePost = async (postId) => {
         try {
             await api.post(`/groups/${slug}/posts/${postId}/like`);
-            fetchPosts(); // Refresh posts after liking
+            setPosts((prevPosts) =>
+                prevPosts.map((post) =>
+                    post.id === postId
+                        ? {
+                              ...post,
+                              liked: !post.liked,
+                              likesCount: post.liked ? post.likesCount - 1 : post.likesCount + 1,
+                          }
+                        : post
+                )
+            );
         } catch (error) {
-            console.error('Error liking post:', error);
+            console.error('Failed to like post', error);
         }
+    };
+
+    const handleToggleComment = (postId) => {
+        setPosts((prevPosts) =>
+            prevPosts.map((post) => (post.id === postId ? { ...post, showComments: !post.showComments } : post))
+        );
     };
 
     const handleRepost = async (postId) => {
         try {
             await api.post(`/groups/${slug}/posts/${postId}/repost`);
-            fetchPosts(); // Refresh posts after reposting
+            setPosts((prevPosts) =>
+                prevPosts.map((post) => (post.id === postId ? { ...post, repostsCount: post.repostsCount + 1 } : post))
+            );
         } catch (error) {
-            console.error('Error reposting:', error);
+            console.error('Failed to repost', error);
         }
     };
 
-    const handleSelectMedia = () => {
-        // Logic to select media (image/video) and set it to postMedia
+    const handleAddComment = async (postId, content) => {
+        try {
+            await api.post(`/groups/${slug}/posts/${postId}/comment`, { content });
+            loadGroupDetails();
+        } catch (error) {
+            console.error('Failed to add comment', error);
+        }
     };
 
-    const renderPost = ({ item }) => (
-        <View style={styles.postCard}>
-            <View style={styles.postHeader}>
-                <Image source={{ uri: item.user.profilePicture }} style={styles.profilePicture} />
-                <View style={styles.userInfo}>
-                    <Text style={styles.userName}>{item.user.first_name}</Text>
-                    <Text style={styles.timestamp}>{new Date(item.createdAt).toLocaleString()}</Text>
-                </View>
-            </View>
-            <Text style={styles.postContent}>{item.content}</Text>
-            {item.media && <Image source={{ uri: item.media }} style={styles.mediaImage} />}
-            <View style={styles.postActions}>
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleLikePost(item.id)}
-                >
-                    <Text>Like</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleCommentPost(item.id, prompt('Enter your comment:'))}
-                >
-                    <Text>Comment</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleRepost(item.id)}
-                >
-                    <Text>Repost</Text>
-                </TouchableOpacity>
-            </View>
-            {item.comments.length > 0 && (
-                <FlatList
-                    data={item.comments}
-                    renderItem={({ item }) => (
-                        <Text style={styles.comment}>{item.user.first_name}: {item.comment}</Text>
-                    )}
-                    keyExtractor={(comment) => comment.id.toString()}
-                />
-            )}
-        </View>
-    );
+    const sortedPosts = posts.sort((a, b) => b.repostsCount - a.repostsCount); // Reposts at the top
+
+    if (!group) return <Text style={styles.loadingText}>Loading...</Text>;
+
+    const creator = group?.creator || {};
+    const isMember = group?.members?.some((member) => member.id === profileData.id);  // Make sure this is correct
+    const isCreator = creator?.id === profileData.id;
+
+    const creatorName = creator.profile_type === 'institution'
+        ? creator.institutionDetails?.institution_name
+        : `${creator.first_name} ${creator.surname}`;
+
+    const creatorProfileUrl = creator.id === profileData.id
+        ? 'profile/showOwn'
+        : `profile/show/${creator.username}`;
 
     return (
         <View style={styles.container}>
-            {group && (
-                <View style={styles.groupHeader}>
-                    <Text style={styles.groupName}>{group.name}</Text>
-                    <Text style={styles.groupDescription}>{group.description}</Text>
-                    {isJoined ? (
-                        <Button title="Leave Group" onPress={handleLeaveGroup} color="red" />
-                    ) : (
-                        <Button title="Join Group" onPress={handleJoinGroup} />
-                    )}
-                </View>
-            )}
-            <Button title="Create Post" onPress={() => setModalVisible(true)} />
-            <FlatList
-                data={posts}
-                renderItem={renderPost}
-                keyExtractor={(item) => item.id.toString()}
-                style={styles.postList}
-            />
-            <Modal visible={isModalVisible} animationType="slide">
-                <View style={styles.modalContent}>
-                    <TextInput
-                        placeholder="Write your post..."
-                        value={postContent}
-                        onChangeText={setPostContent}
-                        style={styles.textInput}
+            <Navbar />
+            <ScrollView style={styles.scrollView}>
+                <View style={styles.groupInfo}>
+                    <Image
+                        source={{
+                            uri: group?.thumbnail
+                                ? `https://tbooke.net/storage/${group.thumbnail}`
+                                : 'default-images/group.png',
+                        }}
+                        style={styles.groupImage}
                     />
-                    <Button title="Select Media" onPress={handleSelectMedia} />
-                    {postMedia && <Image source={{ uri: postMedia.uri }} style={styles.mediaPreview} />}
-                    <Button title="Submit" onPress={handleCreatePost} />
-                    <Button title="Cancel" onPress={() => setModalVisible(false)} color="red" />
+                    <Text style={styles.groupName}>{group?.name || 'Unnamed Group'}</Text>
+                    <Text style={styles.membersCount}>
+                        <Text style={styles.boldText}>Members:</Text> {group?.members?.length || 0}
+                    </Text>
+                    <Text style={styles.groupDescription}>{group?.description || 'No description available'}</Text>
+
+                    <Text style={styles.creatorText}>
+                        <Text style={styles.boldText}>Created by: </Text>
+                        <TouchableOpacity onPress={() => navigation.navigate(creatorProfileUrl)}>
+                            <View style={styles.creatorLink}>
+                                <Image
+                                    source={{
+                                        uri: creator.profile_picture
+                                            ? `https://tbooke.net/storage/${creator.profile_picture}`
+                                            : 'default-images/avatar.png',
+                                    }}
+                                    style={styles.profileImage}
+                                />
+                                <Text style={styles.creatorName}>{creatorName}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </Text>
+
+                    <View style={styles.buttonsContainer}>
+                        {isMember ? (
+                            <TouchableOpacity style={styles.joinedButton} disabled>
+                                <Text style={styles.buttonText}>Joined</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity style={styles.joinButton} onPress={handleJoinGroup}>
+                                <Text style={styles.buttonText}>Join</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {(isMember || isCreator) && (
+                            <TouchableOpacity style={styles.createPostButton} onPress={() => setCreatePostModalVisible(true)}>
+                                <Icon name="plus" size={20} color="#fff" style={styles.createPostIcon} />
+                                <Text style={styles.buttonText}>Create Post</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
-            </Modal>
+
+                <Text style={styles.sectionTitle}>Group Posts</Text>
+
+                {Array.isArray(sortedPosts) && sortedPosts.length === 0 ? (
+                    <Text style={styles.noPostsText}>No posts available in this group.</Text>
+                ) : (
+                    sortedPosts.map((post) => {
+                        const isRepost = post?.isRepost;
+                        const originalPost = isRepost ? post?.originalPost : post;
+                        const reposter = isRepost ? post?.user : null;
+
+                        return (
+                            <View key={originalPost?.id} style={styles.postCard}>
+                                {isRepost && reposter && (
+                                    <View style={styles.repostHeader}>
+                                        <Image
+                                            source={{
+                                                uri: `https://tbooke.net/storage/${
+                                                    reposter?.profile_picture || './../assets/images/avatar.png'
+                                                }`,
+                                            }}
+                                            style={styles.profileImage}
+                                        />
+                                        <Text style={styles.repostText}>
+                                            <Text style={styles.boldText}>{reposter?.first_name}</Text> reposted this post.
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.postHeader}>
+                                    <Image
+                                        source={{
+                                            uri: `https://tbooke.net/storage/${
+                                                originalPost?.user?.profile_picture || './../assets/images/avatar.png'
+                                            }`,
+                                        }}
+                                        style={styles.profileImage}
+                                    />
+                                    <Text style={styles.postUserInfo}>
+                                        <Text style={styles.boldText}>
+                                            {originalPost?.user?.first_name} {originalPost?.user?.surname}
+                                        </Text>{' '}
+                                        - {new Date(originalPost?.createdAt).toLocaleString()}
+                                    </Text>
+                                </View>
+
+                                <Text style={styles.postContent}>{originalPost?.content}</Text>
+
+                                <View style={styles.engagementButtons}>
+                                    <TouchableOpacity onPress={() => handleLikePost(originalPost?.id)} style={styles.engagementButton}>
+                                        <Icon name="thumbs-up" size={16} color="#4CAF50" />
+                                        <Text>{originalPost?.likesCount}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => handleToggleComment(originalPost?.id)} style={styles.engagementButton}>
+                                        <Icon name="message-square" size={16} color="#2196F3" />
+                                        <Text>{originalPost?.commentsCount}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => handleRepost(originalPost?.id)} style={styles.engagementButton}>
+                                        <Icon name="repeat" size={16} color="#FFC107" />
+                                        <Text>{originalPost?.repostsCount}</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {originalPost?.showComments && (
+                                    <View style={styles.commentsSection}>
+                                        {originalPost?.comments?.map((comment) => (
+                                            <View key={comment.id} style={styles.commentCard}>
+                                                <Text>{comment.content}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })
+                )}
+
+                <Modal visible={createPostModalVisible} animationType="slide">
+                    <View style={styles.modalContainer}>
+                        <TextInput
+                            style={styles.textInput}
+                            value={newPostContent}
+                            onChangeText={setNewPostContent}
+                            placeholder="Write something..."
+                            multiline
+                        />
+                        {/* Add Media Picker here */}
+                        <TouchableOpacity onPress={handleCreatePost} style={styles.createPostButton}>
+                            <Text style={styles.buttonText}>Post</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setCreatePostModalVisible(false)}
+                            style={styles.cancelButton}>
+                            <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Modal>
+            </ScrollView>
         </View>
     );
 };
@@ -200,95 +277,194 @@ const ShowGroup = ({ route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
+        backgroundColor: '#f4f4f4',
     },
-    groupHeader: {
-        marginBottom: 16,
+    scrollView: {
+        padding: 15,
+    },
+    groupInfo: {
+        alignItems: 'center', // Center the content
+        marginBottom: 20,
+        padding: 10,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+    },
+    groupImage: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        marginBottom: 10,
     },
     groupName: {
-        fontSize: 24,
+        fontSize: 16,
         fontWeight: 'bold',
+        marginBottom: 5,
+        textAlign: 'center',
+    },
+    membersCount: {
+        fontSize: 16,
+        color: '#777',
+        textAlign: 'center',
     },
     groupDescription: {
         fontSize: 16,
+        marginVertical: 10,
         color: '#555',
+        textAlign: 'center',
     },
-    postList: {
-        marginTop: 16,
+    creatorText: {
+        fontSize: 16,
+        color: '#555',
+        textAlign: 'center',
+    },
+    boldText: {
+        fontWeight: 'bold',
+    },
+    creatorLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileImage: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        marginRight: 10,
+    },
+    creatorName: {
+        fontSize: 16,
+    },
+    buttonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        width: '100%',
+        marginTop: 10,
+    },
+    joinButton: {
+        backgroundColor: '#4CAF50',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        margin: 5,
+    },
+    joinedButton: {
+        backgroundColor: '#ddd',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        margin: 5,
+    },
+    createPostButton: {
+        backgroundColor: '#2196F3',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        margin: 5,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    createPostIcon: {
+        marginRight: 10,
+    },
+    buttonText: {
+        fontSize: 16,
+        color: '#fff',
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginTop: 30,
+        textAlign: 'center',
+    },
+    noPostsText: {
+        fontSize: 16,
+        color: '#555',
+        textAlign: 'center',
+        marginTop: 20,
     },
     postCard: {
         backgroundColor: '#fff',
+        marginBottom: 15,
+        padding: 15,
         borderRadius: 8,
-        padding: 16,
-        marginBottom: 16,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
     },
     postHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
     },
-    profilePicture: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 8,
-    },
-    userInfo: {
-        flex: 1,
-    },
-    userName: {
-        fontWeight: 'bold',
-    },
-    timestamp: {
-        fontSize: 12,
-        color: '#888',
+    postUserInfo: {
+        marginLeft: 10,
+        fontSize: 14,
     },
     postContent: {
         fontSize: 16,
-        marginBottom: 8,
+        color: '#333',
+        marginBottom: 10,
     },
-    mediaImage: {
-        width: '100%',
-        height: 200,
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    postActions: {
+    engagementButtons: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 8,
     },
-    actionButton: {
-        flex: 1,
+    engagementButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        padding: 5,
     },
-    comment: {
+    repostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        padding: 5,
+        backgroundColor: '#e7e7e7',
+        borderRadius: 5,
+    },
+    repostText: {
         fontSize: 14,
         color: '#555',
+        marginLeft: 10,
     },
-    modalContent: {
-        padding: 16,
+    commentsSection: {
+        marginTop: 10,
+    },
+    commentCard: {
+        marginBottom: 10,
+        padding: 10,
+        backgroundColor: '#f4f4f4',
+        borderRadius: 8,
+    },
+    modalContainer: {
+        padding: 20,
+        backgroundColor: '#fff',
+        flex: 1,
     },
     textInput: {
         borderColor: '#ccc',
         borderWidth: 1,
+        padding: 10,
         borderRadius: 8,
-        padding: 8,
-        marginBottom: 8,
+        marginBottom: 20,
+        height: 150,
     },
-    mediaPreview: {
-        width: '100%',
-        height: 200,
+    cancelButton: {
+        marginTop: 10,
+        paddingVertical: 10,
+        backgroundColor: '#FF5722',
         borderRadius: 8,
-        marginBottom: 8,
+    },
+    loadingText: {
+        fontSize: 18,
+        textAlign: 'center',
+        marginTop: 30,
     },
 });
 

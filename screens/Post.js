@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useContext } from 'react';    
 import { View, ScrollView,StyleSheet } from 'react-native';
 import { AuthContext } from './AuthContext';
@@ -9,6 +5,8 @@ import Navbar from './Navbar';
 import UserProfile from './UserProfile';
 import ActivityFeed from './PostItem';
 import Feed from './Feed';
+
+import PostDetail from './PostDetail';
 
 const Post = ({ navigation }) => {
   const { authToken } = useContext(AuthContext);
@@ -19,6 +17,7 @@ const Post = ({ navigation }) => {
       <Navbar navigation={navigation} />
       <ScrollView>
         <UserProfile />
+        {/* <PostDetail /> */}
         <Feed />
       </ScrollView>
     </View>
@@ -28,7 +27,6 @@ const Post = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Add any additional styles you need for the container
   },
 });
 

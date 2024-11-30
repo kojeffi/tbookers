@@ -5,7 +5,7 @@ import { AuthContext } from './AuthContext';
 import Navbar from './Navbar';
 
 const MyGroups = ({ navigation }) => {
-    const { authToken } = useContext(AuthContext);
+    const { authToken, profileData } = useContext(AuthContext); // Get profileData from context
     const [myGroups, setMyGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -16,11 +16,26 @@ const MyGroups = ({ navigation }) => {
 
     const fetchGroups = async () => {
         try {
-            // Adjusted to match your Laravel route for fetching all groups
             const response = await api.get('/groups', {
-                headers: { Authorization: `Bearer ${authToken}` }, // Include token if needed
+                headers: { Authorization: `Bearer ${authToken}` },
             });
-            setMyGroups(response.data);
+
+            // Log the response to confirm structure
+            console.log('API Response:', response.data); // Log the response
+
+            // Access groups array from response
+            const groups = response.data.groups;
+
+            // Check if groups is an array before filtering
+            if (Array.isArray(groups)) {
+                const userGroups = groups.filter(group => 
+                    group.created_by === profileData.user.id // Adjusted to match your profile data structure
+                );
+                setMyGroups(userGroups);
+            } else {
+                console.error('Groups data is not an array:', groups);
+                setError('Invalid data format received from the server.');
+            }
         } catch (error) {
             console.error('Failed to fetch groups:', error);
             setError('Failed to fetch groups');
@@ -93,7 +108,7 @@ const MyGroups = ({ navigation }) => {
                         </View>
                     )}
                     keyExtractor={(item) => item.slug}
-                    numColumns={2} // Two cards per row
+                    numColumns={1} // One card per row
                 />
             )}
         </View>
@@ -107,18 +122,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
+        marginBottom: 8,
     },
     card: {
-        flex: 1,
-        margin: 8,
+        marginBottom: 16, // Add margin to separate cards
         borderRadius: 8,
         backgroundColor: '#f9f9f9',
         elevation: 3, // Shadow for Android

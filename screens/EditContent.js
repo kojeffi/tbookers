@@ -1,122 +1,127 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, TextInput, Text, Button, StyleSheet, TouchableOpacity, Alert, ScrollView, Image, FlatList } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from './AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import Navbar from './Navbar';
 import DropDownPicker from 'react-native-dropdown-picker';
+import api from './api';
 
-const ContentCreationForm = ({ navigation }) => {
+const EditContentScreen = ({ route, navigation }) => {
+    const { contentId } = route.params;
     const { authToken } = useContext(AuthContext);
-    const [title, setTitle] = useState('');
+
+    const [contentTitle, setContentTitle] = useState('');
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [thumbnail, setThumbnail] = useState(null);
+    const [contentThumbnail, setContentThumbnail] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
-    const [content, setContent] = useState('');
-    const [open, setOpen] = useState(false);
+    const [contentBody, setContentBody] = useState('');
     const [categoryOptions, setCategoryOptions] = useState([
-        { label: "Pre School", value: "Pre School" },
-        { label: "Grades 1-6", value: "Grades 1-6" },
-        { label: "CBC Content", value: "CBC Content" },
-        { label: "JSS", value: "Junior Secondary School" },
-        { label: "High School", value: "High School" },
+        { label: 'Pre School', value: 'Pre School' },
+        { label: 'Grades 1-6', value: 'Grades 1-6' },
+        { label: 'CBC Content', value: 'CBC Content' },
+        { label: 'JSS', value: 'Junior Secondary School' },
+        { label: 'High School', value: 'High School' },
     ]);
+    const [open, setOpen] = useState(false);
 
-    const handleSubmit = async () => {
-        const formData = new FormData();
-        formData.append('content_title', title);
-        selectedCategories.forEach(category => {
-            formData.append('content_category[]', category);
-        });
-        if (thumbnail) {
-            formData.append('content_thumbnail', {
-                uri: thumbnail.uri,
-                type: thumbnail.mime || 'image/jpeg',
-                name: `thumbnail.${thumbnail.uri.split('.').pop()}`,
-            });
+    useEffect(() => {
+        if (authToken) {
+            fetchContentData();
         }
-        mediaFiles.forEach((file, index) => {
-            formData.append('media_files[]', {
-                uri: file.uri,
-                type: file.mime || 'multipart/form-data',
-                name: `media_file_${index}.${file.uri.split('.').pop()}`,
-            });
-        });
-        formData.append('content', content);
+    }, [authToken]);
 
+    const fetchContentData = async () => {
         try {
-            const response = await fetch('https://tbooke.net/api/tbooke-learning', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Accept': 'application/json',
-                },
-                body: formData,
-            });
+            const response = await api.get(`/tbooke-learning/${contentId}`);
+            const content = response.data;
 
-            if (response.ok) {
-                Alert.alert('Content Created Successfully!');
-                navigation.navigate('TbookeLearning');
+            if (content) {
+                setContentTitle(content.content_title || '');
+                setSelectedCategories(content.content_category ? content.content_category.split(',') : []);
+                setContentThumbnail(content.content_thumbnail || null);
+                setMediaFiles(content.media_files ? JSON.parse(content.media_files) : []);
+                setContentBody(content.content || '');
             } else {
-                const errorResponse = await response.json();
-                Alert.alert('Error', errorResponse.message || 'Something went wrong!');
+                Alert.alert('Error', 'Content not found');
             }
         } catch (error) {
-            console.error(error);
-            Alert.alert('Error', error.message);
+            console.error('Failed to load content', error);
+            Alert.alert('Error', 'Failed to load content');
         }
     };
 
-    const pickThumbnail = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
+    const handleThumbnailPick = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync();
+        if (!result.cancelled) {
+            setContentThumbnail(result.uri);
+        }
+    };
+
+    const handleMediaPick = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true });
+        if (!result.cancelled) {
+            setMediaFiles(result.selected.map(file => file.uri));
+        }
+    };
+
+    const handleUpdateContent = async () => {
+        const formData = new FormData();
+        formData.append('content_title', contentTitle);
+        formData.append('content_category', selectedCategories.join(','));
+
+        if (contentThumbnail) {
+            formData.append('content_thumbnail', {
+                uri: contentThumbnail,
+                name: 'thumbnail.jpg',
+                type: 'image/jpeg',
+            });
+        }
+
+        mediaFiles.forEach((file, index) => {
+            formData.append(`media_files[${index}]`, {
+                uri: file,
+                name: `media_${index}.jpg`,
+                type: 'image/jpeg',
+            });
         });
-        if (!result.canceled) {
-            setThumbnail(result.assets[0]);
+
+        formData.append('content', contentBody);
+
+        try {
+            await api.put(`/tbooke-learning/creator/${contentId}`, formData);
+            Alert.alert('Success', 'Content updated successfully');
+            navigation.goBack(); // Navigate back to the previous screen after success
+        } catch (error) {
+            console.error('Failed to update content', error);
+            Alert.alert('Error', 'Failed to update content');
         }
     };
 
-    const pickMediaFiles = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.All,
-            allowsMultipleSelection: true,
-        });
-        if (!result.canceled) {
-            setMediaFiles(prevFiles => [...prevFiles, ...result.assets]);
-        }
-    };
-
-    const removeThumbnail = () => {
-        setThumbnail(null);
-    };
-
-    const removeMediaFile = (index) => {
-        setMediaFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
-    };
-
-    const renderMediaFiles = ({ item, index }) => (
+    const renderMediaFiles = ({ item }) => (
         <View style={styles.mediaItemContainer}>
-            <Image source={{ uri: item.uri }} style={styles.imagePreview} />
-            <TouchableOpacity onPress={() => removeMediaFile(index)} style={styles.removeIcon}>
+            <Image source={{ uri: item }} style={styles.imagePreview} />
+            <TouchableOpacity onPress={() => removeMediaFile(item)} style={styles.removeIcon}>
                 <MaterialIcons name="close" size={20} color="#ff0000" />
             </TouchableOpacity>
         </View>
     );
+
+    const removeMediaFile = (file) => {
+        setMediaFiles(mediaFiles.filter(item => item !== file));
+    };
 
     return (
         <View style={styles.container}>
             <Navbar navigation={navigation} />
             <ScrollView>
                 <View style={styles.containerOne}>
-                    <Text style={styles.title}>Create Content</Text>
+                    <Text style={styles.title}>Edit Content</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="Content title"
-                        value={title}
-                        onChangeText={setTitle}
+                        value={contentTitle}
+                        onChangeText={setContentTitle}
                     />
                     <Text style={styles.label}>Select Content Categories:</Text>
                     <DropDownPicker
@@ -137,19 +142,19 @@ const ContentCreationForm = ({ navigation }) => {
                         searchablePlaceholder="Search..."
                         searchablePlaceholderTextColor="gray"
                     />
-                    <TouchableOpacity style={styles.uploadButton} onPress={pickThumbnail}>
+                    <TouchableOpacity style={styles.uploadButton} onPress={handleThumbnailPick}>
                         <MaterialIcons name="file-upload" size={20} color="#fff" />
                         <Text style={styles.uploadText}>Upload Content Thumbnail</Text>
                     </TouchableOpacity>
-                    {thumbnail && (
+                    {contentThumbnail && (
                         <View style={styles.imagePreviewContainer}>
-                            <Image source={{ uri: thumbnail.uri }} style={styles.imagePreview} />
-                            <TouchableOpacity onPress={removeThumbnail} style={styles.removeIcon}>
+                            <Image source={{ uri: contentThumbnail }} style={styles.imagePreview} />
+                            <TouchableOpacity onPress={() => setContentThumbnail(null)} style={styles.removeIcon}>
                                 <MaterialIcons name="close" size={20} color="#ff0000" />
                             </TouchableOpacity>
                         </View>
                     )}
-                    <TouchableOpacity style={styles.uploadButton} onPress={pickMediaFiles}>
+                    <TouchableOpacity style={styles.uploadButton} onPress={handleMediaPick}>
                         <MaterialIcons name="attach-file" size={20} color="#fff" />
                         <Text style={styles.uploadText}>Upload Media Files</Text>
                     </TouchableOpacity>
@@ -168,13 +173,13 @@ const ContentCreationForm = ({ navigation }) => {
                     <TextInput
                         style={styles.textArea}
                         placeholder="Start typing your content..."
-                        value={content}
-                        onChangeText={setContent}
+                        value={contentBody}
+                        onChangeText={setContentBody}
                         multiline
                         numberOfLines={10}
                     />
-                    <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                        <Text style={styles.submitButtonText}>Submit</Text>
+                    <TouchableOpacity style={styles.submitButton} onPress={handleUpdateContent}>
+                        <Text style={styles.submitButtonText}>Update Content</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -190,7 +195,7 @@ const styles = StyleSheet.create({
     containerOne: {
         flex: 1,
         backgroundColor: '#f4f4f4',
-        padding: 7,
+        padding: 10,
     },
     dropdownContainer: {
         height: 50,
@@ -205,7 +210,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     title: {
-        fontSize: 16,
+        fontSize: 24,
         marginBottom: 20,
         fontWeight: 'bold',
         color: '#333',
@@ -214,22 +219,20 @@ const styles = StyleSheet.create({
     input: {
         borderWidth: 2,
         borderColor: '#ccc',
-        borderRadius: 10,
-        padding: 7,
+        borderRadius: 20,
+        padding: 10,
         marginBottom: 15,
         backgroundColor: '#fff',
         color: "#333",
-        paddingVertical: 4,
     },
     textArea: {
         borderWidth: 2,
         borderColor: '#ccc',
-        borderRadius: 10,
+        borderRadius: 20,
         padding: 10,
         marginBottom: 15,
         height: 100,
         backgroundColor: '#fff',
-        textAlignVertical: 'top',
     },
     label: {
         marginBottom: 10,
@@ -239,10 +242,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#008080',
-        padding: 4,
+        padding: 10,
         borderRadius: 10,
         marginBottom: 15,
-        marginHorizontal: 50,
     },
     uploadText: {
         color: '#fff',
@@ -263,24 +265,26 @@ const styles = StyleSheet.create({
     removeIcon: {
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 5, // Add margin to the top for spacing
+        backgroundColor: 'rgba(255, 0, 0, 0.5)',
+        borderRadius: 15,
+        padding: 5,
+        position: 'absolute',
+        right: 0,
+        top: 0,
     },
     row: {
-        justifyContent: 'space-between', // Space items evenly
-        marginBottom: 15, // Space between rows
+        justifyContent: 'space-around',
     },
     submitButton: {
         backgroundColor: '#008080',
-        padding: 4,
+        padding: 10,
         borderRadius: 10,
         alignItems: 'center',
-        marginHorizontal: 130,
     },
     submitButtonText: {
         color: '#fff',
         fontWeight: 'bold',
-        fontSize: 12,
     },
 });
 
-export default ContentCreationForm;
+export default EditContentScreen;
